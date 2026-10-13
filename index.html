@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="WAAM – nödleverans av medicin och förnödenheter med drönare under krisens första 72 timmar.">
+<title>WAAM Nödleverans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky utility bar with view tabs; form view = form column + guidance rail; logistics view = summary row then one card per building (packlist + recipients). */
+:root{
+  --bg:#ECEFF1; --surface:#FFFFFF; --sunk:#F5F7F8; --ink:#13202B; --muted:#596775; --line:#D3DAE0;
+  --accent:#D9480F; --accent-soft:#FDE9DF; --accent-ink:#FFFFFF;
+  --ok:#1D7348; --ok-soft:#E1F2E8; --crit:#B4232B; --crit-soft:#FBE3E4; --warn:#9A6312; --warn-soft:#FBF0DA;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E151C; --surface:#16202A; --sunk:#111A22; --ink:#E5EBF0; --muted:#94A2AF; --line:#283643;
+  --accent:#FF7A33; --accent-soft:#3A2116; --accent-ink:#1A0E07;
+  --ok:#52C48C; --ok-soft:#14301F; --crit:#F2575E; --crit-soft:#3A1719; --warn:#E3A944; --warn-soft:#33270F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E151C; --surface:#16202A; --sunk:#111A22; --ink:#E5EBF0; --muted:#94A2AF; --line:#283643;
+  --accent:#FF7A33; --accent-soft:#3A2116; --accent-ink:#1A0E07;
+  --ok:#52C48C; --ok-soft:#14301F; --crit:#F2575E; --crit-soft:#3A1719; --warn:#E3A944; --warn-soft:#33270F; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.1;margin:0;text-wrap:balance}
+p{margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ink);color:var(--bg)}
+.bar .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:22px;letter-spacing:.04em}
+.brand small{font:600 11px/1 var(--f-mono);letter-spacing:.08em;opacity:.7;text-transform:uppercase}
+.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.tab{background:none;border:0;border-radius:6px;padding:7px 12px;color:inherit;opacity:.75;cursor:pointer;font-weight:600;font-size:14px}
+.tab:hover{opacity:1;background:color-mix(in srgb,var(--bg) 12%,transparent)}
+.tab[aria-selected="true"]{opacity:1;background:var(--accent);color:var(--accent-ink)}
+.tab .lock{font-size:11px;opacity:.8;margin-left:4px}
+
+/* hero */
+.hero{padding-block:36px 8px;display:grid;gap:18px}
+.eyebrow{font:600 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:clamp(32px,5.4vw,56px);font-weight:800;max-width:16ch}
+.hero p.lead{font-size:17px;max-width:62ch;color:var(--muted)}
+.timeline{margin-top:6px;max-width:640px}
+.tl-track{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--accent) 0 33.3%,color-mix(in srgb,var(--accent) 55%,var(--line)) 33.3% 66.6%,var(--line) 66.6%)}
+.tl-ticks{display:flex;justify-content:space-between;margin-top:6px;font:500 12px/1.3 var(--f-mono);color:var(--muted)}
+.tl-ticks span:first-child{color:var(--accent);font-weight:600}
+.alert112{display:flex;gap:12px;align-items:center;background:var(--crit-soft);color:var(--ink);border-radius:var(--r);padding:12px 14px;max-width:640px}
+.alert112 b{font-family:var(--f-display);font-size:26px;font-stretch:80%;color:var(--crit);line-height:1}
+
+/* form layout */
+.formgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start;padding-block:24px 64px}
+@media (max-width:880px){.formgrid{grid-template-columns:minmax(0,1fr)}}
+form{display:grid;gap:18px}
+fieldset{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:20px;margin:0;display:grid;gap:14px;min-width:0}
+legend{font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:20px;padding:0 6px;margin-left:-6px}
+.hint{font-size:13px;color:var(--muted)}
+.row{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.field{display:grid;gap:5px;min-width:0}
+label.lbl{font-weight:600;font-size:14px}
+label.lbl .req{color:var(--accent)}
+input[type=text],input[type=tel],input[type=number],input[type=password],textarea{width:100%;border:1.5px solid var(--line);background:var(--sunk);border-radius:8px;padding:10px 12px;min-height:44px}
+input:focus,textarea:focus{border-color:var(--accent);outline:none;background:var(--surface)}
+input[aria-invalid="true"]{border-color:var(--crit)}
+.err{color:var(--crit);font-size:13px;font-weight:600}
+textarea{min-height:80px;resize:vertical}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;cursor:pointer}
+.check input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+
+.med{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 90px 40px;gap:10px;align-items:end;padding:12px;border-radius:8px;background:var(--sunk)}
+.med .crit{grid-column:1/-1}
+@media (max-width:560px){.med{grid-template-columns:minmax(0,1fr) 90px}.med .f-name{grid-column:1/-1}.med .rm{grid-column:2;grid-row:3;justify-self:end}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:8px;padding:11px 18px;font-weight:700;cursor:pointer;min-height:44px}
+.btn-primary{background:var(--accent);color:var(--accent-ink);font-size:16px}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink)}
+.btn-sm{padding:6px 12px;min-height:34px;font-size:13px}
+.icon-btn{width:40px;height:44px;border:1.5px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;font-size:18px;line-height:1}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.chip span{display:inline-flex;gap:6px;align-items:center;padding:9px 14px;border:1.5px solid var(--line);border-radius:999px;background:var(--surface);font-size:14px;font-weight:500}
+.chip input:checked + span{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.chip input:focus-visible + span{outline:3px solid var(--accent);outline-offset:2px}
+.chip small{font:12px var(--f-mono);color:var(--muted)}
+
+.submitbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.status-msg{font-size:14px;font-weight:600}
+
+/* guidance rail */
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 72px);display:grid;gap:16px}
+@media (max-width:880px){.rail{position:static}}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.steps li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px}
+.steps .n{width:30px;height:30px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);display:grid;place-items:center;font:700 13px var(--f-mono)}
+.steps b{display:block;font-size:14px}
+.steps p{font-size:13px;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:10px}
+.panel h3{font-size:17px}
+.panel ul{margin:0;padding-left:18px;font-size:13px;color:var(--muted);display:grid;gap:4px}
+
+.confirm{background:var(--surface);border:1px solid var(--line);border-left:0;border-radius:var(--r);padding:24px;display:grid;gap:14px;box-shadow:inset 5px 0 0 var(--ok)}
+.confirm h2{font-size:28px}
+.ref{font:600 20px var(--f-mono);letter-spacing:.06em}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+
+/* logistics */
+.lhead{display:flex;gap:16px;align-items:end;justify-content:space-between;flex-wrap:wrap;padding-block:32px 16px}
+.lhead h1{font-size:clamp(28px,4vw,40px)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.stat .v{font:700 30px/1.1 var(--f-display);font-stretch:80%;font-variant-numeric:tabular-nums}
+.stat .k{font-size:13px;color:var(--muted)}
+.stat.crit .v{color:var(--crit)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-block:18px 12px}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:7px 12px;cursor:pointer;font-size:13px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.demo-flag{display:inline-flex;gap:8px;align-items:center;font:600 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;background:var(--warn-soft);color:var(--warn);padding:6px 10px;border-radius:6px}
+.groups{display:grid;gap:16px;padding-bottom:64px}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.group.akut{border-color:color-mix(in srgb,var(--crit) 55%,var(--line))}
+.g-head{display:flex;gap:12px 20px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--line)}
+.g-head h2{font-size:22px}
+.g-head .sub{font-size:13px;color:var(--muted);margin-top:3px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.badge{font:600 11px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:6px 8px;border-radius:5px;background:var(--sunk);color:var(--muted)}
+.badge.akut{background:var(--crit-soft);color:var(--crit)}
+.badge.ny{background:var(--accent-soft);color:var(--accent)}
+.badge.packad{background:var(--warn-soft);color:var(--warn)}
+.badge.skickad{background:var(--sunk);color:var(--ink)}
+.badge.levererad{background:var(--ok-soft);color:var(--ok)}
+.g-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.g-meta b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.g-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:0}
+@media (max-width:760px){.g-body{grid-template-columns:minmax(0,1fr)}}
+.g-col{padding:16px 18px;display:grid;gap:10px;align-content:start;min-width:0}
+.g-col + .g-col{border-left:1px solid var(--line)}
+@media (max-width:760px){.g-col + .g-col{border-left:0;border-top:1px solid var(--line)}}
+.g-col h3{font:600 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pack{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.pack li label{display:grid;grid-template-columns:20px 48px minmax(0,1fr);gap:10px;align-items:start;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:14px}
+.pack li label:hover{background:var(--sunk)}
+.pack input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--ok)}
+.pack .q{font-family:var(--f-mono);font-weight:600;text-align:right}
+.pack .for{display:block;font-size:12px;color:var(--muted)}
+.pack .lv{color:var(--crit);font-weight:700;font-size:11px;font-family:var(--f-mono);letter-spacing:.05em;margin-left:6px}
+.pack input:checked ~ span{text-decoration:line-through;opacity:.55}
+.sep{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:8px 4px 2px}
+.recips{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.recips li{display:grid;gap:2px;font-size:14px;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.recips li:last-child{border-bottom:0;padding-bottom:0}
+.recips .who{font-weight:600}
+.recips .meta{font-size:12px;color:var(--muted)}
+.recips .note{font-size:13px;font-style:italic;color:var(--muted)}
+.receiver{font-size:12px;font-weight:700;color:var(--ok)}
+.g-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--sunk);border-top:1px solid var(--line)}
+.weightbar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);min-width:0}
+.wb{width:120px;height:6px;border-radius:3px;background:var(--line);overflow:hidden;flex:none}
+.wb i{display:block;height:100%;background:var(--ok)}
+.wb.over i{background:var(--warn)}
+.empty{background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--r);padding:36px 24px;display:grid;gap:12px;justify-items:start}
+.empty h2{font-size:22px}
+.locked{padding-block:64px;display:grid;gap:12px;max-width:560px}
+
+/* system view */
+.sys{display:grid;gap:22px;padding-block:32px 64px}
+.sys section{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:grid;gap:12px;min-width:0}
+.sys h2{font-size:22px}
+.sys p,.sys li{max-width:70ch}
+.sys ol{margin:0;padding-left:20px;display:grid;gap:6px}
+pre{margin:0;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.55 var(--f-mono)}
+.sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+table{border-collapse:collapse;font-size:14px;width:100%}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;z-index:10}
+@media (prefers-reduced-motion:no-preference){.group,.confirm{animation:rise .3s ease both}@keyframes rise{from{transform:translateY(6px)}to{transform:none}}}
+html{color-scheme:light}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand">WAAM <small>Nödleverans · 72 h</small></div>
+    <nav class="tabs" role="tablist" aria-label="Vyer">
+      <button class="tab" role="tab" id="tab-bestall" aria-selected="true" data-view="bestall">Beställ</button>
+      <button class="tab" role="tab" id="tab-logistik" aria-selected="false" data-view="logistik">Logistik<span class="lock" id="lockmark">· låst</span></button>
+      <button class="tab" role="tab" id="tab-system" aria-selected="false" data-view="system">Så funkar systemet</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ VIEW: BESTÄLL (public) ============ -->
+<main id="view-bestall">
+  <div class="wrap">
+    <section class="hero">
+      <span class="eyebrow">De första 72 timmarna</span>
+      <h1>Medicin och förnödenheter, levererat med drönare</h1>
+      <p class="lead">Fyll i vad ditt hushåll behöver. Vi samlar ihop beställningar från samma hus och skickar allt i en gemensam drönarlåda. Medicin som är livsviktig packas först.</p>
+      <div class="timeline" aria-label="Insatsens tidsfönster">
+        <div class="tl-track"></div>
+        <div class="tl-ticks mono"><span>0 h · katastrof</span><span>24 h</span><span>48 h</span><span>72 h</span></div>
+      </div>
+      <div class="alert112" role="note"><b>112</b><p>Är någon i livsfara just nu? Ring 112 först. Det här formuläret ersätter inte ambulans eller räddningstjänst.</p></div>
+    </section>
+
+    <div class="formgrid">
+      <div id="form-area">
+        <form id="order-form" novalidate>
+          <fieldset>
+            <legend>Vem är du?</legend>
+            <div class="row">
+              <div class="field"><label class="lbl" for="f-name">Fullständigt namn <span class="req">*</span></label><input type="text" id="f-name" autocomplete="name" required></div>
+              <div class="field"><label class="lbl" for="f-phone">Telefonnummer <span class="req">*</span></label><input type="tel" id="f-phone" autocomplete="tel" inputmode="tel" placeholder="070-123 45 67" required></div>
+            </div>
+            <div class="field" style="max-width:220px"><label class="lbl" for="f-persons">Personer i hushållet <span class="req">*</span></label><input type="number" id="f-persons" min="1" max="20" value="1" required></div>
+            <p class="hint">Vi ringer bara om vi inte hittar fram eller behöver fråga om din medicin.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Var ska lådan landa?</legend>
+            <div class="row">
+              <div class="field" style="grid-column:span 2"><label class="lbl" for="f-street">Gatuadress <span class="req">*</span></label><input type="text" id="f-street" autocomplete="address-line1" placeholder="Ronnebygatan 12" required></div>
+              <div class="field"><label class="lbl" for="f-apt">Lägenhet / våning</label><input type="text" id="f-apt" placeholder="Lgh 1102"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label class="lbl" for="f-zip">Postnummer <span class="req">*</span></label><input type="text" id="f-zip" autocomplete="postal-code" inputmode="numeric" placeholder="371 33" required></div>
+              <div class="field"><label class="lbl" for="f-city">Ort <span class="req">*</span></label><input type="text" id="f-city" autocomplete="address-level2" placeholder="Karlskrona" required></div>
+            </div>
+            <div class="field"><label class="lbl" for="f-gps">Koordinater (GPS)</label><input type="text" id="f-gps" class="mono" placeholder="56.1612, 15.5869"><span class="hint">Valfritt men hjälper drönaren. Öppna kartappen, håll fingret på din position och kopiera siffrorna.</span></div>
+            <div class="field"><label class="lbl" for="f-landing">Bästa landningsplats</label><input type="text" id="f-landing" placeholder="T.ex. innergården bakom port B"></div>
+            <label class="check"><input type="checkbox" id="f-receiver"><span>Jag kan ta emot lådan för hela huset och dela ut till grannarna</span></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Medicin</legend>
+            <p class="hint">Skriv namnet som det står på förpackningen. Ange styrka om du vet den.</p>
+            <div id="meds" style="display:grid;gap:10px"></div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+              <button type="button" class="btn btn-ghost btn-sm" id="add-med">+ Lägg till läkemedel</button>
+              <label class="check"><input type="checkbox" id="f-nomed"><span>Vi behöver ingen medicin</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Övriga förnödenheter</legend>
+            <p class="hint">Välj det ni saknar. Mängden räknas ut efter antal personer, för 72 timmar.</p>
+            <div class="chips" id="supply-chips"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Något mer vi bör veta?</legend>
+            <div class="field"><label class="lbl" for="f-notes">Meddelande</label><textarea id="f-notes" placeholder="T.ex. rullstol, ingen hiss, små barn, husdjur"></textarea></div>
+          </fieldset>
+
+          <div class="submitbar">
+            <button type="submit" class="btn btn-primary" id="submit-btn">Skicka beställning</button>
+            <span class="status-msg" id="form-status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+        <div id="confirm" hidden></div>
+      </div>
+
+      <aside class="rail">
+        <div class="panel">
+          <h3>Så går det till</h3>
+          <ol class="steps">
+            <li><span class="n">1</span><div><b>Du beställer</b><p>Ungefär två minuter. Du kan ändra beställningen efteråt.</p></div></li>
+            <li><span class="n">2</span><div><b>Vi packar per hus</b><p>Alla beställningar till samma adress läggs i en låda.</p></div></li>
+            <li><span class="n">3</span><div><b>Drönaren landar</b><p>Lådan märks med lägenhet och namn, så alla får rätt sak.</p></div></li>
+          </ol>
+        </div>
+        <div class="panel">
+          <h3>Ha det här nära till hands</h3>
+          <ul>
+            <li>Dina läkemedelsförpackningar eller receptlistan</li>
+            <li>Lägenhetsnumret (står ofta på dörren)</li>
+            <li>En laddad telefon så vi når dig</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<!-- ============ VIEW: LOGISTIK (owner only) ============ -->
+<main id="view-logistik" hidden>
+  <div class="wrap" id="logistik-root"></div>
+</main>
+
+<!-- ============ VIEW: SYSTEM (documentation for the team) ============ -->
+<main id="view-system" hidden>
+  <div class="wrap sys">
+    <div>
+      <span class="eyebrow">För teamet</span>
+      <h1 style="font-size:clamp(28px,4vw,40px);margin-top:8px">Hur WAAM-systemet är uppbyggt</h1>
+    </div>
+    <div class="sys-grid">
+      <section>
+        <h2>Komponentstruktur</h2>
+        <pre>App
+├─ TopBar            (vy-flikar, låsmarkering)
+├─ BestallView       (offentlig)
+│  ├─ Hero + 72h-tidslinje + 112-ruta
+│  ├─ OrderForm
+│  │  ├─ PersonFields
+│  │  ├─ AddressFields  (adress, lgh, GPS, mottagare)
+│  │  ├─ MedicineList → MedicineRow ×n
+│  │  ├─ SupplyChips
+│  │  └─ Notes
+│  ├─ Confirmation   (referens + status)
+│  └─ GuidanceRail
+├─ LogistikView      (endast ägaren/WAAM)
+│  ├─ Stats          (beställningar, lådor, akuta)
+│  ├─ Filter         (alla / akuta / ej skickade)
+│  └─ BuildingCard ×n
+│     ├─ PackList    (sammanslagen medicin + förnödenheter)
+│     ├─ Recipients  (hushåll i huset)
+│     └─ StatusActions
+└─ SystemView        (den här sidan)</pre>
+      </section>
+      <section>
+        <h2>Datastruktur: tabellen <span class="mono">orders</span></h2>
+        <pre>id           uuid        primärnyckel = referensnr
+created_at   timestamptz när beställningen kom in
+updated_at   timestamptz senaste statusändring
+name         text        "Anna Svensson"
+phone        text        "070-123 45 67"
+persons      int         3
+street       text        "Ronnebygatan 12"
+apartment    text        "Lgh 1102"
+postcode     text        "37133"
+city         text        "Karlskrona"
+lat, lng     float8      56.1612, 15.5869 (valfritt)
+landing      text        "Innergården"
+can_receive  bool        tar emot för hela huset
+medicines    jsonb       [{ name, dose, qty, critical }]
+supplies     jsonb       ["vatten", "mat"]
+notes        text        "Ingen hiss"
+status       text        ny → packad → skickad → levererad</pre>
+      </section>
+    </div>
+    <section>
+      <h2>Så grupperas beställningar per fastighet</h2>
+      <ol>
+        <li><b>Normalisera adressen.</b> Gatuadressen görs om till gemener, punkter och dubbla mellanslag tas bort, och allt efter "lgh", "vån" eller "tr" stryks. Postnumret skrivs utan mellanslag. Nyckeln blir t.ex. <span class="mono">ronnebygatan 12|37133</span>.</li>
+        <li><b>Gruppera på nyckeln.</b> Alla hushåll med samma nyckel hamnar i samma låda.</li>
+        <li><b>Slå ihop med GPS.</b> Två grupper vars koordinater ligger inom 40 meter räknas som samma hus, även om adressen stavats olika.</li>
+        <li><b>Bygg packlistan.</b> Samma läkemedel och styrka summeras, men varje rad behåller vem den är till. Förnödenheter räknas ut per person för 72 timmar.</li>
+        <li><b>Väg lådan.</b> Varje låda har ett maxlass på 5 kg (antagande för prototypen). Blir det tyngre visas hur många flygningar som behövs.</li>
+        <li><b>Prioritera.</b> Hus med minst en livsviktig medicin hamnar överst som <i>Akut</i>, sedan sorteras efter äldsta beställning.</li>
+      </ol>
+    </section>
+    <section>
+      <h2>Förnödenheter och vikter i packlistan</h2>
+      <div class="tablewrap"><table id="supply-table"><thead><tr><th>Val</th><th>Packas som</th><th>Mängd</th><th>Vikt/st</th></tr></thead><tbody></tbody></table></div>
+      <p class="hint">Vattenmängden utgår från MSB:s råd om 3 liter per person och dygn. En drönarlåda rymmer bara en del av det, så vatten levereras som en startmängd plus reningstabletter.</p>
+    </section>
+    <section>
+      <h2>Vem ser vad</h2>
+      <p>Vem som helst kan skicka en beställning utan att logga in, men ingen kan läsa andras. Databasen (Supabase) har radsäkerhet: anonyma besökare får bara <i>lägga till</i> rader. Bara WAAM-konton som finns i tabellen <span class="mono">admins</span> kan logga in i logistikvyn, läsa beställningar och ändra status.</p>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+/* ---------- config ---------- */
+const SUPPLIES = [
+  {key:"vatten",  label:"Vatten",            pack:"Vatten 1,5 L + reningstabletter", per:"person",  unit:"st", kg:1.55},
+  {key:"mat",     label:"Mat för 72 h",      pack:"Matranson 72 h",                  per:"person",  unit:"st", kg:0.9},
+  {key:"hygien",  label:"Hygienartiklar",    pack:"Hygienpaket",                     per:"hushall", unit:"st", kg:0.4},
+  {key:"barn",    label:"Barnmat & blöjor",  pack:"Barnpaket (mat + blöjor)",        per:"hushall", unit:"st", kg:0.8},
+  {key:"forsta",  label:"Första hjälpen",    pack:"Första hjälpen-kit",              per:"hushall", unit:"st", kg:0.35},
+  {key:"ljus",    label:"Ficklampa",         pack:"Ficklampa + batterier",           per:"hushall", unit:"st", kg:0.3},
+  {key:"filt",    label:"Värmefilt",         pack:"Värmefilt (folie)",               per:"person",  unit:"st", kg:0.06},
+  {key:"radio",   label:"Vevradio",          pack:"Vevradio",                        per:"hushall", unit:"st", kg:0.4},
+];
+const MED_KG = 0.05, BOX_MAX_KG = 5, MERGE_M = 40;
+const STAGES = ["ny","packad","skickad","levererad"];
+const STAGE_LABEL = {ny:"Ny",packad:"Packad",skickad:"Skickad",levererad:"Levererad"};
+const NEXT_ACTION = {ny:"Markera som packad",packad:"Markera som skickad",skickad:"Markera som levererad"};
+
+/* ---------- state ---------- */
+const S = {sb:null,session:null,isOwner:false,orders:[],demo:false,filter:"alla",packed:{},demoStatus:{},view:"bestall",channel:null};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600);}
+
+/* ---------- tabs ---------- */
+function show(view){
+  S.view=view;
+  for(const v of ["bestall","logistik","system"]){
+    $("#view-"+v).hidden = v!==view;
+    $("#tab-"+v).setAttribute("aria-selected", v===view);
+  }
+  if(view==="logistik") renderLogistik();
+  try{localStorage.setItem("waam-view",view)}catch(e){}
+  window.scrollTo({top:0});
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
+
+/* ---------- form building ---------- */
+function supplyChips(){
+  $("#supply-chips").innerHTML = SUPPLIES.map(s=>`<label class="chip"><input type="checkbox" value="${s.key}" id="sup-${s.key}"><span>${esc(s.label)} <small>${s.per==="person"?"/person":"/hushåll"}</small></span></label>`).join("");
+  $("#supply-table tbody").innerHTML = SUPPLIES.map(s=>`<tr><td>${esc(s.label)}</td><td>${esc(s.pack)}</td><td>1 ${s.per==="person"?"per person":"per hushåll"}</td><td class="mono">${s.kg.toFixed(2).replace(".",",")} kg</td></tr>`).join("");
+}
+let medSeq=0;
+function addMed(m={}){
+  const i=++medSeq, el=document.createElement("div");
+  el.className="med"; el.dataset.i=i;
+  el.innerHTML=`
+    <div class="field f-name"><label class="lbl" for="m-name-${i}">Läkemedel</label><input type="text" id="m-name-${i}" class="m-name" placeholder="T.ex. Insulin NovoRapid" value="${esc(m.name)}"></div>
+    <div class="field"><label class="lbl" for="m-dose-${i}">Styrka</label><input type="text" id="m-dose-${i}" class="m-dose" placeholder="100 E/ml" value="${esc(m.dose)}"></div>
+    <div class="field"><label class="lbl" for="m-qty-${i}">Antal förp.</label><input type="number" id="m-qty-${i}" class="m-qty" min="1" max="20" value="${m.qty||1}"></div>
+    <button type="button" class="icon-btn rm" aria-label="Ta bort läkemedel">×</button>
+    <label class="check crit"><input type="checkbox" class="m-crit" id="m-crit-${i}" ${m.critical?"checked":""}><span><b>Livsviktig</b> – medicinen tar slut inom 24 timmar</span></label>`;
+  el.querySelector(".rm").onclick=()=>{el.remove(); if(!$("#meds").children.length) addMed();};
+  $("#meds").appendChild(el);
+}
+$("#add-med").onclick=()=>{addMed(); $("#f-nomed").checked=false; syncNoMed(); $("#meds .med:last-child .m-name").focus();};
+function syncNoMed(){const off=$("#f-nomed").checked; $("#meds").hidden=off; $("#add-med").hidden=off;}
+$("#f-nomed").onchange=syncNoMed;
+
+function parseGps(s){
+  const m=String(s||"").replace(/[^\d.,\-\s]/g," ").match(/(-?\d{1,2}[.,]\d+)\s*[,; ]\s*(-?\d{1,3}[.,]\d+)/);
+  if(!m) return null;
+  const lat=parseFloat(m[1].replace(",",".")), lng=parseFloat(m[2].replace(",","."));
+  return (Math.abs(lat)<=90&&Math.abs(lng)<=180)?{lat,lng}:null;
+}
+
+function readForm(){
+  const v=id=>$(id).value.trim();
+  const errs=[];
+  const req=[["#f-name","Skriv ditt namn."],["#f-phone","Skriv ett telefonnummer så vi kan nå dig."],["#f-street","Skriv gatuadressen."],["#f-zip","Skriv postnumret."],["#f-city","Skriv orten."]];
+  document.querySelectorAll("[aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"));
+  for(const [id,msg] of req){ if(!v(id)){ $(id).setAttribute("aria-invalid","true"); errs.push([id,msg]); } }
+  if(v("#f-phone") && v("#f-phone").replace(/\D/g,"").length<7){ $("#f-phone").setAttribute("aria-invalid","true"); errs.push(["#f-phone","Telefonnumret verkar för kort."]); }
+  const gpsRaw=v("#f-gps"), gps=parseGps(gpsRaw);
+  if(gpsRaw && !gps){ $("#f-gps").setAttribute("aria-invalid","true"); errs.push(["#f-gps","Koordinaterna ska se ut som 56.1612, 15.5869. Lämna tomt om du är osäker."]); }
+  const meds = $("#f-nomed").checked ? [] : [...document.querySelectorAll("#meds .med")].map(el=>({
+    name:el.querySelector(".m-name").value.trim(), dose:el.querySelector(".m-dose").value.trim(),
+    qty:Math.max(1,Math.min(20,parseInt(el.querySelector(".m-qty").value)||1)), critical:el.querySelector(".m-crit").checked
+  })).filter(m=>m.name);
+  const supplies=[...document.querySelectorAll("#supply-chips input:checked")].map(i=>i.value);
+  if(!meds.length && !supplies.length) errs.push(["#add-med","Välj minst ett läkemedel eller en förnödenhet."]);
+  return {errs, data:{
+    name:v("#f-name"), phone:v("#f-phone"), persons:Math.max(1,Math.min(20,parseInt($("#f-persons").value)||1)),
+    street:v("#f-street"), apartment:v("#f-apt"), postcode:v("#f-zip").replace(/\s/g,""), city:v("#f-city"),
+    lat:gps?gps.lat:null, lng:gps?gps.lng:null, landing:v("#f-landing"), canReceive:$("#f-receiver").checked,
+    medicines:meds, supplies, notes:v("#f-notes")
+  }};
+}
+
+function fillForm(o){
+  $("#f-name").value=o.name||""; $("#f-phone").value=o.phone||""; $("#f-persons").value=o.persons||1;
+  $("#f-street").value=o.street||""; $("#f-apt").value=o.apartment||""; $("#f-zip").value=o.postcode||""; $("#f-city").value=o.city||"";
+  $("#f-gps").value=(o.lat!=null&&o.lng!=null)?`${o.lat}, ${o.lng}`:""; $("#f-landing").value=o.landing||""; $("#f-receiver").checked=!!o.canReceive;
+  $("#meds").innerHTML=""; (o.medicines?.length?o.medicines:[{}]).forEach(addMed);
+  $("#f-nomed").checked = !o.medicines?.length && !!o.supplies?.length; syncNoMed();
+  document.querySelectorAll("#supply-chips input").forEach(i=>i.checked=(o.supplies||[]).includes(i.value));
+  $("#f-notes").value=o.notes||"";
+}
+
+const refOf = id => "WAAM-"+String(id||"").replace(/[^a-z0-9]/gi,"").slice(-6).toUpperCase().padStart(6,"0");
+
+function showConfirm(o){
+  const medTxt=o.medicines?.length?o.medicines.map(m=>`${esc(m.name)}${m.dose?" "+esc(m.dose):""} ×${m.qty}${m.critical?" (livsviktig)":""}`).join(", "):"Ingen";
+  const supTxt=o.supplies?.length?o.supplies.map(k=>esc(SUPPLIES.find(s=>s.key===k)?.label||k)).join(", "):"Inga";
+  $("#confirm").innerHTML=`<div class="confirm">
+    <span class="eyebrow" style="color:var(--ok)">Beställningen är mottagen</span>
+    <h2>Vi har din beställning</h2>
+    <div><div class="hint">Ditt referensnummer – spara det eller ta en skärmbild</div><div class="ref">${refOf(o.id)}</div></div>
+    <p>Vi packar ihop din beställning med andra i samma hus. ${o.medicines?.some(m=>m.critical)?"Livsviktig medicin går först.":""} Håll telefonen nära, vi ringer om något är oklart. Behöver du ändra något, skicka en ny beställning och skriv referensnumret i meddelandet.</p>
+    <dl class="kv">
+      <dt>Adress</dt><dd>${esc(o.street)}${o.apartment?", "+esc(o.apartment):""}, ${esc(o.postcode)} ${esc(o.city)}</dd>
+      <dt>Medicin</dt><dd>${medTxt}</dd>
+      <dt>Övrigt</dt><dd>${supTxt}</dd>
+    </dl>
+    <div><button class="btn btn-ghost" id="new-order" type="button">Skicka en ny beställning</button></div>
+  </div>`;
+  $("#confirm").hidden=false; $("#order-form").hidden=true;
+  $("#new-order").onclick=()=>{ $("#confirm").hidden=true; $("#order-form").hidden=false; $("#order-form").reset(); fillForm({persons:1}); $("#f-nomed").checked=false; syncNoMed(); window.scrollTo({top:0}); };
+}
+
+/* row <-> object mapping for the Supabase table */
+const toRow = (o,id) => ({id, name:o.name, phone:o.phone, persons:o.persons, street:o.street, apartment:o.apartment, postcode:o.postcode, city:o.city,
+  lat:o.lat, lng:o.lng, landing:o.landing, can_receive:o.canReceive, medicines:o.medicines, supplies:o.supplies, notes:o.notes});
+const fromRow = r => ({id:r.id, name:r.name, phone:r.phone, persons:r.persons, street:r.street, apartment:r.apartment, postcode:r.postcode, city:r.city,
+  lat:r.lat, lng:r.lng, landing:r.landing, canReceive:r.can_receive, medicines:r.medicines||[], supplies:r.supplies||[], notes:r.notes,
+  status:r.status, createdAt:r.created_at, updatedAt:r.updated_at});
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==="x"?r:(r&3|8)).toString(16)}));
+
+$("#order-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const {errs,data}=readForm();
+  const st=$("#form-status");
+  if(errs.length){ st.style.color="var(--crit)"; st.textContent=errs[0][1]; $(errs[0][0]).focus(); return; }
+  if(!S.sb){ st.style.color="var(--crit)"; st.textContent="Tjänsten är inte uppkopplad än. Försök igen om en stund."; return; }
+  const btn=$("#submit-btn"); btn.disabled=true; st.style.color="var(--muted)"; st.textContent="Skickar…";
+  const id=newId();
+  try{
+    const {error}=await S.sb.from("orders").insert(toRow(data,id));
+    if(error) throw error;
+    st.textContent=""; showConfirm({...data,id}); window.scrollTo({top:0,behavior:"smooth"});
+  }catch(err){
+    console.error(err);
+    st.style.color="var(--crit)";
+    st.textContent="Det gick inte att skicka just nu. Kontrollera uppkopplingen och försök igen.";
+  }finally{ btn.disabled=false; }
+});
+
+/* ---------- grouping logic (pure) ---------- */
+function normStreet(s){
+  return String(s||"").toLowerCase().normalize("NFC")
+    .replace(/[.,]/g," ").replace(/\b(lgh|lägenhet|vån|våning|tr|trappa|uppg|uppgång)\b.*$/,"")
+    .replace(/\s+/g," ").trim();
+}
+const addrKey = o => normStreet(o.street)+"|"+String(o.postcode||"").replace(/\s/g,"");
+function distM(a,b){
+  const R=6371000, toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
+  const h=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function centroid(list){
+  const p=list.filter(o=>o.lat!=null&&o.lng!=null);
+  return p.length?{lat:p.reduce((s,o)=>s+o.lat,0)/p.length,lng:p.reduce((s,o)=>s+o.lng,0)/p.length}:null;
+}
+function groupOrders(orders){
+  const map=new Map();
+  for(const o of orders){ const k=addrKey(o); if(!map.has(k)) map.set(k,[]); map.get(k).push(o); }
+  let groups=[...map].map(([key,list])=>({key,orders:list,c:centroid(list)}));
+  // merge groups within MERGE_M metres (same building, different spelling)
+  for(let i=0;i<groups.length;i++) for(let j=groups.length-1;j>i;j--){
+    const a=groups[i], b=groups[j];
+    if(a.c&&b.c&&distM(a.c,b.c)<=MERGE_M){ a.orders.push(...b.orders); a.c=centroid(a.orders); a.merged=true; groups.splice(j,1); }
+  }
+  return groups.map(g=>{
+    const meds=new Map(), sup=new Map(); let kg=0;
+    for(const o of g.orders){
+      const who=o.apartment?o.apartment:(o.name||"okänd");
+      for(const m of o.medicines||[]){
+        const k=(m.name+"|"+(m.dose||"")).toLowerCase();
+        if(!meds.has(k)) meds.set(k,{name:m.name,dose:m.dose,qty:0,critical:false,for:[]});
+        const r=meds.get(k); r.qty+=m.qty||1; r.critical=r.critical||!!m.critical; r.for.push(who+(m.qty>1?` (${m.qty})`:""));
+        kg+=MED_KG*(m.qty||1);
+      }
+      for(const key of o.supplies||[]){
+        const s=SUPPLIES.find(x=>x.key===key); if(!s) continue;
+        const n=s.per==="person"?(o.persons||1):1;
+        if(!sup.has(key)) sup.set(key,{...s,qty:0,for:[]});
+        const r=sup.get(key); r.qty+=n; r.for.push(who); kg+=s.kg*n;
+      }
+    }
+    const first=g.orders.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)))[0];
+    const stageIdx=Math.min(...g.orders.map(o=>STAGES.indexOf(o.status||"ny")).map(i=>i<0?0:i));
+    return {
+      key:g.key, merged:!!g.merged, orders:g.orders, c:g.c,
+      street:first.street, postcode:first.postcode, city:first.city,
+      meds:[...meds.values()].sort((a,b)=>b.critical-a.critical||a.name.localeCompare(b.name,"sv")),
+      supplies:[...sup.values()],
+      akut:[...meds.values()].some(m=>m.critical),
+      persons:g.orders.reduce((s,o)=>s+(o.persons||1),0),
+      receiver:g.orders.find(o=>o.canReceive),
+      kg, flights:Math.max(1,Math.ceil(kg/BOX_MAX_KG)),
+      firstAt:first.createdAt, status:STAGES[stageIdx]
+    };
+  }).sort((a,b)=>(b.akut-a.akut)||String(a.firstAt).localeCompare(String(b.firstAt)));
+}
+
+/* ---------- example data (clearly labelled, never stored) ---------- */
+function demoOrders(){
+  const t=h=>new Date(Date.now()-h*3600e3).toISOString();
+  return [
+    {id:"ex1",name:"Exempel Andersson",phone:"070-000 00 01",persons:2,street:"Ronnebygatan 12",apartment:"Lgh 1102",postcode:"37133",city:"Karlskrona",lat:56.16236,lng:15.58601,landing:"Innergården",canReceive:true,medicines:[{name:"Insulin NovoRapid",dose:"100 E/ml",qty:2,critical:true}],supplies:["vatten","mat"],notes:"",createdAt:t(5)},
+    {id:"ex2",name:"Exempel Berg",phone:"070-000 00 02",persons:1,street:"Ronnebygatan 12",apartment:"Lgh 1203",postcode:"371 33",city:"Karlskrona",lat:56.16240,lng:15.58610,canReceive:false,medicines:[{name:"Waran",dose:"2,5 mg",qty:1,critical:true}],supplies:["filt"],notes:"Ingen hiss, svårt med trappor",createdAt:t(4.2)},
+    {id:"ex3",name:"Exempel Chen",phone:"070-000 00 03",persons:4,street:"Ronnebyg. 12",apartment:"Lgh 1001",postcode:"37133",city:"Karlskrona",lat:56.16233,lng:15.58596,canReceive:false,medicines:[{name:"Ventoline",dose:"0,1 mg/dos",qty:1,critical:false}],supplies:["vatten","barn","mat"],notes:"Bebis 8 månader",createdAt:t(3.1)},
+    {id:"ex4",name:"Exempel Dahl",phone:"070-000 00 04",persons:2,street:"Borgmästaregatan 5",apartment:"",postcode:"37134",city:"Karlskrona",lat:56.16105,lng:15.58938,canReceive:true,medicines:[{name:"Levaxin",dose:"100 mikrog",qty:1,critical:false}],supplies:["hygien","ljus","radio"],notes:"",createdAt:t(2.5)},
+    {id:"ex5",name:"Exempel Eriksson",phone:"070-000 00 05",persons:1,street:"Borgmästaregatan 5",apartment:"Vån 3",postcode:"37134",city:"Karlskrona",lat:56.16108,lng:15.58944,canReceive:false,medicines:[],supplies:["mat","forsta","filt"],notes:"Katt i lägenheten",createdAt:t(1.8)},
+    {id:"ex6",name:"Exempel Fors",phone:"070-000 00 06",persons:3,street:"Vallgatan 22",apartment:"Lgh 1302",postcode:"37131",city:"Karlskrona",lat:null,lng:null,canReceive:false,medicines:[{name:"Alvedon",dose:"500 mg",qty:2,critical:false}],supplies:["vatten"],notes:"",createdAt:t(0.6)},
+  ].map(o=>({...o,status:S.demoStatus[o.id]||"ny"}));
+}
+
+/* ---------- logistics view ---------- */
+const fmtKg = n => n.toFixed(1).replace(".",",")+" kg";
+const ago = iso => { if(!iso) return ""; const m=Math.round((Date.now()-new Date(iso))/60000); return m<60?`${m} min sedan`:`${Math.floor(m/60)} h ${m%60} min sedan`; };
+
+function renderLogistik(){
+  const root=$("#logistik-root");
+  if(!S.isOwner){
+    const signedInNotAdmin = S.session && !S.isOwner;
+    root.innerHTML=`<div class="locked">
+      <span class="eyebrow">Låst vy</span>
+      <h1 style="font-size:32px">Logistiken är bara för WAAM</h1>
+      <p class="hint" style="font-size:15px">Här samlar teamet alla beställningar och packar drönarlådor per hus. Logga in med ditt WAAM-konto.</p>
+      ${signedInNotAdmin?`<p class="err">Kontot ${esc(S.session.user.email)} har inte behörighet till logistiken.</p><div><button type="button" class="btn btn-ghost btn-sm" id="logout">Logga ut</button></div>`:`
+      <form id="login" class="panel" style="max-width:380px" novalidate>
+        <div class="field"><label class="lbl" for="l-email">E-post</label><input type="text" id="l-email" autocomplete="username" inputmode="email"></div>
+        <div class="field"><label class="lbl" for="l-pass">Lösenord</label><input type="password" id="l-pass" autocomplete="current-password"></div>
+        <button class="btn btn-primary" type="submit" id="l-btn">Logga in</button>
+        <span class="err" id="l-err" role="alert"></span>
+      </form>`}
+      <div><button type="button" class="btn btn-ghost btn-sm" id="demo-locked">Visa exempeldata utan att logga in</button></div>
+    </div>`;
+    const lf=$("#login");
+    if(lf) lf.onsubmit=async e=>{
+      e.preventDefault(); const err=$("#l-err"); err.textContent="";
+      if(!S.sb){ err.textContent="Tjänsten är inte uppkopplad."; return; }
+      $("#l-btn").disabled=true;
+      const {error}=await S.sb.auth.signInWithPassword({email:$("#l-email").value.trim(), password:$("#l-pass").value});
+      $("#l-btn").disabled=false;
+      if(error) err.textContent="Fel e-post eller lösenord.";
+    };
+    const lo=$("#logout"); if(lo) lo.onclick=()=>S.sb.auth.signOut();
+    $("#demo-locked").onclick=()=>{S.demoOnly=true;S.demo=true;renderLogistik();};
+    if(!S.demoOnly) return;
+  }
+  const src = S.demo ? demoOrders() : S.orders;
+  const groups = groupOrders(src);
+  const shown = groups.filter(g=> S.filter==="akut"?g.akut : S.filter==="ej"?(g.status==="ny"||g.status==="packad") : true);
+  const stats={orders:src.length, boxes:groups.reduce((s,g)=>s+g.flights,0), akut:groups.filter(g=>g.akut).length, persons:groups.reduce((s,g)=>s+g.persons,0)};
+  root.innerHTML=`
+    <div class="lhead">
+      <div><span class="eyebrow">Låst vy · endast WAAM</span><h1 style="margin-top:8px">Packlistor per fastighet</h1></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${S.demo?`<span class="demo-flag">Exempeldata visas</span>`:""}${S.isOwner?`<button type="button" class="btn btn-ghost btn-sm" id="logout2">Logga ut</button>`:""}</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">${stats.orders}</div><div class="k">beställningar</div></div>
+      <div class="stat"><div class="v">${groups.length}</div><div class="k">adresser · ${stats.boxes} flygningar</div></div>
+      <div class="stat crit"><div class="v">${stats.akut}</div><div class="k">hus med livsviktig medicin</div></div>
+      <div class="stat"><div class="v">${stats.persons}</div><div class="k">personer att försörja</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Filter">
+        ${[["alla","Alla"],["akut","Akuta"],["ej","Ej skickade"]].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join("")}
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="demo-toggle">${S.demoOnly?"Tillbaka till inloggning":S.demo?"Visa riktiga beställningar":"Visa exempeldata"}</button>
+    </div>
+    <div class="groups">
+      ${shown.length? shown.map(groupCard).join("") : emptyState(src.length)}
+    </div>`;
+  root.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;renderLogistik();});
+  $("#demo-toggle").onclick=()=>{ if(S.demoOnly){S.demoOnly=false;S.demo=false;} else S.demo=!S.demo; renderLogistik(); };
+  const lo2=$("#logout2"); if(lo2) lo2.onclick=()=>S.sb.auth.signOut();
+  const de=$("#demo-empty"); if(de) de.onclick=()=>{S.demo=true;renderLogistik();};
+  root.querySelectorAll("[data-advance]").forEach(b=>b.onclick=()=>advance(b.dataset.advance, groups));
+  root.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyList(groups.find(g=>g.key===b.dataset.copy), b));
+  root.querySelectorAll(".pack input").forEach(i=>i.onchange=()=>{S.packed[i.id]=i.checked;});
+}
+
+function emptyState(total){
+  if(total) return `<div class="empty"><h2>Inga hus matchar filtret</h2><p class="hint">Välj <b>Alla</b> för att se samtliga adresser.</p></div>`;
+  return `<div class="empty"><h2>Inga beställningar än</h2><p class="hint" style="font-size:15px;max-width:60ch">När någon skickar formuläret under <b>Beställ</b> dyker hushållet upp här, ihopslaget med grannarna i samma hus. Testa själv genom att skicka en beställning, eller titta på exempeldata.</p><button type="button" class="btn btn-ghost btn-sm" id="demo-empty">Visa exempeldata</button></div>`;
+}
+
+function groupCard(g){
+  const gid=g.key.replace(/[^a-z0-9]/gi,"_");
+  const over=g.kg>BOX_MAX_KG, pct=Math.min(100,g.kg/BOX_MAX_KG*100);
+  const medRows=g.meds.map((m,i)=>`<li><label><input type="checkbox" id="pk-${gid}-m${i}" ${S.packed[`pk-${gid}-m${i}`]?"checked":""}><span class="q">${m.qty}×</span><span>${esc(m.name)} ${esc(m.dose||"")}${m.critical?`<span class="lv">LIVSVIKTIG</span>`:""}<span class="for">till ${esc(m.for.join(", "))}</span></span></label></li>`).join("");
+  const supRows=g.supplies.map((s,i)=>`<li><label><input type="checkbox" id="pk-${gid}-s${i}" ${S.packed[`pk-${gid}-s${i}`]?"checked":""}><span class="q">${s.qty}×</span><span>${esc(s.pack)}<span class="for">till ${esc(s.for.join(", "))}</span></span></label></li>`).join("");
+  const recips=g.orders.slice().sort((a,b)=>String(a.apartment).localeCompare(String(b.apartment),"sv",{numeric:true})).map(o=>`
+    <li><span class="who">${esc(o.name)}${o.apartment?` · ${esc(o.apartment)}`:""}</span>
+      <span class="meta mono">${esc(o.phone)} · ${o.persons||1} pers · ${ago(o.createdAt)}</span>
+      ${o.canReceive?`<span class="receiver">Kan ta emot lådan för huset</span>`:""}
+      ${o.landing?`<span class="meta">Landning: ${esc(o.landing)}</span>`:""}
+      ${o.notes?`<span class="note">"${esc(o.notes)}"</span>`:""}</li>`).join("");
+  const next=NEXT_ACTION[g.status];
+  return `<article class="group ${g.akut?"akut":""}">
+    <div class="g-head">
+      <div style="min-width:0">
+        <h2>${esc(g.street)}</h2>
+        <div class="sub">${esc(String(g.postcode).replace(/^(\d{3})(\d{2})$/,"$1 $2"))} ${esc(g.city)}${g.c?` · <span class="mono">${g.c.lat.toFixed(4)}, ${g.c.lng.toFixed(4)}</span>`:" · ingen GPS"}${g.merged?" · ihopslagen via GPS":""}</div>
+      </div>
+      <div class="badges">${g.akut?`<span class="badge akut">Akut</span>`:""}<span class="badge ${g.status}">${STAGE_LABEL[g.status]}</span></div>
+    </div>
+    <div class="g-body">
+      <div class="g-col">
+        <h3>Packlista · ${g.flights>1?g.flights+" lådor":"en låda"}</h3>
+        <ul class="pack">
+          ${g.meds.length?`<li class="sep">Medicin</li>${medRows}`:""}
+          ${g.supplies.length?`<li class="sep">Förnödenheter</li>${supRows}`:""}
+        </ul>
+      </div>
+      <div class="g-col">
+        <h3>Mottagare · ${g.orders.length} hushåll</h3>
+        <ul class="recips">${recips}</ul>
+      </div>
+    </div>
+    <div class="g-foot">
+      <div class="weightbar"><span class="wb ${over?"over":""}"><i style="width:${pct}%"></i></span><span><b class="mono" style="color:var(--ink)">${fmtKg(g.kg)}</b> av ${BOX_MAX_KG} kg${over?` · kräver ${g.flights} flygningar`:""}</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" data-copy="${esc(g.key)}">Kopiera packlista</button>
+        ${next?`<button type="button" class="btn btn-primary btn-sm" data-advance="${esc(g.key)}">${next}</button>`:`<span class="badge levererad">Klar</span>`}
+      </div>
+    </div>
+  </article>`;
+}
+
+async function advance(key, groups){
+  const g=groups.find(x=>x.key===key); if(!g) return;
+  const to=STAGES[Math.min(STAGES.length-1, STAGES.indexOf(g.status)+1)];
+  if(S.demo){ g.orders.forEach(o=>S.demoStatus[o.id]=to); renderLogistik(); toast(`${g.street}: ${STAGE_LABEL[to].toLowerCase()}`); return; }
+  try{
+    const {error}=await S.sb.from("orders").update({status:to, updated_at:new Date().toISOString()}).in("id", g.orders.map(o=>o.id));
+    if(error) throw error;
+    await loadOrders();
+    toast(`${g.street}: ${STAGE_LABEL[to].toLowerCase()}`);
+  }catch(e){ toast("Kunde inte uppdatera status. Försök igen."); }
+}
+
+async function copyList(g, btn){
+  if(!g) return;
+  const lines=[`WAAM drönarlåda – ${g.street}, ${g.postcode} ${g.city}${g.akut?" [AKUT]":""}`,"",
+    ...g.meds.map(m=>`${m.qty}× ${m.name} ${m.dose||""}${m.critical?" (LIVSVIKTIG)":""} → ${m.for.join(", ")}`),
+    ...g.supplies.map(s=>`${s.qty}× ${s.pack} → ${s.for.join(", ")}`),"",
+    `Vikt: ${fmtKg(g.kg)}${g.receiver?` · Mottagare: ${g.receiver.name}${g.receiver.apartment?" ("+g.receiver.apartment+")":""}, ${g.receiver.phone}`:""}`];
+  const text=lines.join("\n");
+  try{ await navigator.clipboard.writeText(text); btn.textContent="Kopierad"; setTimeout(()=>btn.textContent="Kopiera packlista",1500); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");btn.textContent="Kopierad";}catch(_){} ta.remove(); }
+}
+
+/* ---------- boot ---------- */
+supplyChips(); addMed();
+try{ const v=localStorage.getItem("waam-view"); if(v==="system") show("system"); }catch(e){}
+
+async function loadOrders(){
+  const {data,error}=await S.sb.from("orders").select("*").order("created_at",{ascending:true}).limit(1000);
+  if(!error){ S.orders=data.map(fromRow); if(S.view==="logistik") renderLogistik(); }
+}
+async function onSession(session){
+  S.session=session; S.isOwner=false;
+  if(S.channel){ S.sb.removeChannel(S.channel); S.channel=null; }
+  if(session){
+    const {data}=await S.sb.rpc("is_admin");
+    S.isOwner=data===true;
+    if(S.isOwner){
+      S.demoOnly=false; S.demo=false;
+      await loadOrders();
+      S.channel=S.sb.channel("orders-live").on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>loadOrders()).subscribe();
+    }
+  } else { S.orders=[]; }
+  $("#lockmark").hidden=S.isOwner;
+  if(S.view==="logistik") renderLogistik();
+}
+(function init(){
+  const cfg=window.WAAM_CONFIG||{};
+  if(!window.supabase || !cfg.supabaseUrl || !cfg.supabaseAnonKey || cfg.supabaseUrl.includes("DIN-")){
+    $("#form-status").style.color="var(--muted)";
+    $("#form-status").textContent="Demoläge: databasen är inte kopplad än.";
+    return;
+  }
+  S.sb=window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  S.sb.auth.getSession().then(({data})=>onSession(data.session));
+  S.sb.auth.onAuthStateChange((evt,session)=>{ if(evt!=="INITIAL_SESSION") setTimeout(()=>onSession(session),0); });
+})();
+</script>
+</body>
+</html>
