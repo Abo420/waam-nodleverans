@@ -389,8 +389,8 @@ status       text        ny → packad → skickad → levererad</pre>
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js?v=2"></script>
+<script src="vendor/supabase.js?v=3"></script>
+<script src="config.js?v=3"></script>
 <script>
 /* ---------- config ---------- */
 const SUPPLIES = [
@@ -524,7 +524,7 @@ $("#order-form").addEventListener("submit", async e=>{
   const {errs,data}=readForm();
   const st=$("#form-status");
   if(errs.length){ st.style.color="var(--crit)"; st.textContent=errs[0][1]; $(errs[0][0]).focus(); return; }
-  if(!S.sb){ st.style.color="var(--crit)"; st.textContent="Tjänsten är inte uppkopplad än. Försök igen om en stund."; return; }
+  if(!S.sb){ st.style.color="var(--crit)"; st.textContent="Tjänsten är inte uppkopplad ("+(S.notReady||"okänt fel")+"). Ladda om sidan med Ctrl+Shift+R."; return; }
   const btn=$("#submit-btn"); btn.disabled=true; st.style.color="var(--muted)"; st.textContent="Skickar…";
   const id=newId();
   try{
@@ -634,7 +634,7 @@ function renderLogistik(){
     const lf=$("#login");
     if(lf) lf.onsubmit=async e=>{
       e.preventDefault(); const err=$("#l-err"); err.textContent="";
-      if(!S.sb){ err.textContent="Tjänsten är inte uppkopplad."; return; }
+      if(!S.sb){ err.textContent="Tjänsten är inte uppkopplad ("+(S.notReady||"okänt fel")+"). Ladda om med Ctrl+Shift+R."; return; }
       $("#l-btn").disabled=true;
       const {error}=await S.sb.auth.signInWithPassword({email:$("#l-email").value.trim(), password:$("#l-pass").value});
       $("#l-btn").disabled=false;
@@ -773,9 +773,13 @@ async function onSession(session){
 }
 (function init(){
   const cfg=window.WAAM_CONFIG||{};
-  if(!window.supabase || !cfg.supabaseUrl || !cfg.supabaseAnonKey || cfg.supabaseUrl.includes("DIN-")){
+  const why = !window.supabase ? "databasbiblioteket laddades inte"
+    : (!cfg.supabaseUrl || !cfg.supabaseAnonKey || cfg.supabaseUrl.includes("DIN-")) ? "config.js saknar Supabase-uppgifter" : "";
+  if(why){
+    S.notReady=why;
+    console.error("WAAM: "+why);
     $("#form-status").style.color="var(--muted)";
-    $("#form-status").textContent="Demoläge: databasen är inte kopplad än.";
+    $("#form-status").textContent="Demoläge: "+why+".";
     return;
   }
   S.sb=window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
