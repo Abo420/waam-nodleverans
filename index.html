@@ -13,7 +13,7 @@
 :root{
   --bg:#ECEFF1; --surface:#FFFFFF; --sunk:#F5F7F8; --ink:#13202B; --muted:#596775; --line:#D3DAE0;
   --accent:#D9480F; --accent-soft:#FDE9DF; --accent-ink:#FFFFFF;
-  --ok:#1D7348; --ok-soft:#E1F2E8; --crit:#B4232B; --crit-soft:#FBE3E4; --warn:#9A6312; --warn-soft:#FBF0DA;
+  --ok:#1D7348; --ok-soft:#E1F2E8; --cold:#1F5FA8; --cold-soft:#E2ECF8; --crit:#B4232B; --crit-soft:#FBE3E4; --warn:#9A6312; --warn-soft:#FBF0DA;
   --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
@@ -22,11 +22,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E151C; --surface:#16202A; --sunk:#111A22; --ink:#E5EBF0; --muted:#94A2AF; --line:#283643;
   --accent:#FF7A33; --accent-soft:#3A2116; --accent-ink:#1A0E07;
-  --ok:#52C48C; --ok-soft:#14301F; --crit:#F2575E; --crit-soft:#3A1719; --warn:#E3A944; --warn-soft:#33270F; color-scheme:dark}}
+  --ok:#52C48C; --ok-soft:#14301F; --cold:#6FA8F0; --cold-soft:#15253A; --crit:#F2575E; --crit-soft:#3A1719; --warn:#E3A944; --warn-soft:#33270F; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E151C; --surface:#16202A; --sunk:#111A22; --ink:#E5EBF0; --muted:#94A2AF; --line:#283643;
   --accent:#FF7A33; --accent-soft:#3A2116; --accent-ink:#1A0E07;
-  --ok:#52C48C; --ok-soft:#14301F; --crit:#F2575E; --crit-soft:#3A1719; --warn:#E3A944; --warn-soft:#33270F; color-scheme:dark}
+  --ok:#52C48C; --ok-soft:#14301F; --cold:#6FA8F0; --cold-soft:#15253A; --crit:#F2575E; --crit-soft:#3A1719; --warn:#E3A944; --warn-soft:#33270F; color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
@@ -162,6 +162,13 @@ textarea{min-height:80px;resize:vertical}
 .pack input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--ok)}
 .pack .q{font-family:var(--f-mono);font-weight:600;text-align:right}
 .pack .for{display:block;font-size:12px;color:var(--muted)}
+.pack .kv{color:var(--cold);font-weight:700;font-size:11px;font-family:var(--f-mono);letter-spacing:.05em;margin-left:6px}
+.badge.kyl{background:var(--cold-soft);color:var(--cold)}
+.wind{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.wind label{font-size:13px;font-weight:600}
+.wind input{width:80px;min-height:34px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface)}
+.flightstop{background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:14px 16px;display:grid;gap:4px}
+.flightstop b{color:var(--warn);font-family:var(--f-display);font-size:18px;font-stretch:85%}
 .pack .lv{color:var(--crit);font-weight:700;font-size:11px;font-family:var(--f-mono);letter-spacing:.05em;margin-left:6px}
 .pack input:checked ~ span{text-decoration:line-through;opacity:.55}
 .sep{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:8px 4px 2px}
@@ -358,7 +365,7 @@ city         text        "Karlskrona"
 lat, lng     float8      56.1612, 15.5869 (valfritt)
 landing      text        "Innergården"
 can_receive  bool        tar emot för hela huset
-medicines    jsonb       [{ name, dose, qty, critical }]
+medicines    jsonb       [{ name, dose, qty, critical, cold }]
 supplies     jsonb       ["vatten", "mat"]
 notes        text        "Ingen hiss"
 status       text        ny → packad → skickad → levererad</pre>
@@ -371,7 +378,9 @@ status       text        ny → packad → skickad → levererad</pre>
         <li><b>Gruppera på nyckeln.</b> Alla hushåll med samma nyckel hamnar i samma låda.</li>
         <li><b>Slå ihop med GPS.</b> Två grupper vars koordinater ligger inom 40 meter räknas som samma hus, även om adressen stavats olika.</li>
         <li><b>Bygg packlistan.</b> Samma läkemedel och styrka summeras, men varje rad behåller vem den är till. Förnödenheter räknas ut per person för 72 timmar.</li>
-        <li><b>Väg lådan.</b> Varje låda har ett maxlass på 5 kg (antagande för prototypen). Blir det tyngre visas hur många flygningar som behövs.</li>
+        <li><b>Väg lådan.</b> Innehållet plus lådans egen vikt jämförs med drönarens maxlast (inställt i <span class="mono">config.js</span>). Blir det tyngre visas hur många flygningar som behövs.</li>
+        <li><b>Kylvara.</b> Läkemedel som kräver kylning, t.ex. insulin, markeras så att de packas i den isolerade lådan och prioriteras.</li>
+        <li><b>Flygväder.</b> Logistikansvarig anger aktuell vind. Över drönarens gräns blir det flygstopp: lådor kan packas men inte skickas förrän vinden mojnat.</li>
         <li><b>Prioritera.</b> Hus med minst en livsviktig medicin hamnar överst som <i>Akut</i>, sedan sorteras efter äldsta beställning.</li>
       </ol>
     </section>
@@ -403,13 +412,16 @@ const SUPPLIES = [
   {key:"filt",    label:"Värmefilt",         pack:"Värmefilt (folie)",               per:"person",  unit:"st", kg:0.06},
   {key:"radio",   label:"Vevradio",          pack:"Vevradio",                        per:"hushall", unit:"st", kg:0.4},
 ];
-const MED_KG = 0.05, BOX_MAX_KG = 5, MERGE_M = 40;
+const DRONE = Object.assign({boxTareKg:0.6, maxPayloadKg:5, maxWindMs:12}, (window.WAAM_CONFIG||{}).drone||{});
+const MED_KG = 0.05, BOX_MAX_KG = DRONE.maxPayloadKg, BOX_TARE = DRONE.boxTareKg, MERGE_M = 40;
 const STAGES = ["ny","packad","skickad","levererad"];
 const STAGE_LABEL = {ny:"Ny",packad:"Packad",skickad:"Skickad",levererad:"Levererad"};
 const NEXT_ACTION = {ny:"Markera som packad",packad:"Markera som skickad",skickad:"Markera som levererad"};
 
 /* ---------- state ---------- */
-const S = {sb:null,session:null,isOwner:false,orders:[],demo:false,filter:"alla",packed:{},demoStatus:{},view:"bestall",channel:null};
+const S = {sb:null,session:null,isOwner:false,orders:[],demo:false,filter:"alla",packed:{},demoStatus:{},view:"bestall",channel:null,wind:null};
+try{ const w=localStorage.getItem("waam-wind"); if(w!==null&&w!=="") S.wind=parseFloat(w); }catch(e){}
+const flightStop = () => S.wind!=null && !isNaN(S.wind) && S.wind > DRONE.maxWindMs;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -442,7 +454,8 @@ function addMed(m={}){
     <div class="field"><label class="lbl" for="m-dose-${i}">Styrka</label><input type="text" id="m-dose-${i}" class="m-dose" placeholder="100 E/ml" value="${esc(m.dose)}"></div>
     <div class="field"><label class="lbl" for="m-qty-${i}">Antal förp.</label><input type="number" id="m-qty-${i}" class="m-qty" min="1" max="20" value="${m.qty||1}"></div>
     <button type="button" class="icon-btn rm" aria-label="Ta bort läkemedel">×</button>
-    <label class="check crit"><input type="checkbox" class="m-crit" id="m-crit-${i}" ${m.critical?"checked":""}><span><b>Livsviktig</b> – medicinen tar slut inom 24 timmar</span></label>`;
+    <label class="check crit"><input type="checkbox" class="m-crit" id="m-crit-${i}" ${m.critical?"checked":""}><span><b>Livsviktig</b> – medicinen tar slut inom 24 timmar</span></label>
+    <label class="check crit"><input type="checkbox" class="m-cold" id="m-cold-${i}" ${m.cold?"checked":""}><span><b>Kräver kylning</b> – t.ex. insulin, ska förvaras i kylskåp</span></label>`;
   el.querySelector(".rm").onclick=()=>{el.remove(); if(!$("#meds").children.length) addMed();};
   $("#meds").appendChild(el);
 }
@@ -468,7 +481,7 @@ function readForm(){
   if(gpsRaw && !gps){ $("#f-gps").setAttribute("aria-invalid","true"); errs.push(["#f-gps","Koordinaterna ska se ut som 56.1612, 15.5869. Lämna tomt om du är osäker."]); }
   const meds = $("#f-nomed").checked ? [] : [...document.querySelectorAll("#meds .med")].map(el=>({
     name:el.querySelector(".m-name").value.trim(), dose:el.querySelector(".m-dose").value.trim(),
-    qty:Math.max(1,Math.min(20,parseInt(el.querySelector(".m-qty").value)||1)), critical:el.querySelector(".m-crit").checked
+    qty:Math.max(1,Math.min(20,parseInt(el.querySelector(".m-qty").value)||1)), critical:el.querySelector(".m-crit").checked, cold:el.querySelector(".m-cold").checked
   })).filter(m=>m.name);
   const supplies=[...document.querySelectorAll("#supply-chips input:checked")].map(i=>i.value);
   if(!meds.length && !supplies.length) errs.push(["#add-med","Välj minst ett läkemedel eller en förnödenhet."]);
@@ -570,8 +583,8 @@ function groupOrders(orders){
       const who=o.apartment?o.apartment:(o.name||"okänd");
       for(const m of o.medicines||[]){
         const k=(m.name+"|"+(m.dose||"")).toLowerCase();
-        if(!meds.has(k)) meds.set(k,{name:m.name,dose:m.dose,qty:0,critical:false,for:[]});
-        const r=meds.get(k); r.qty+=m.qty||1; r.critical=r.critical||!!m.critical; r.for.push(who+(m.qty>1?` (${m.qty})`:""));
+        if(!meds.has(k)) meds.set(k,{name:m.name,dose:m.dose,qty:0,critical:false,cold:false,for:[]});
+        const r=meds.get(k); r.qty+=m.qty||1; r.critical=r.critical||!!m.critical; r.cold=r.cold||!!m.cold; r.for.push(who+(m.qty>1?` (${m.qty})`:""));
         kg+=MED_KG*(m.qty||1);
       }
       for(const key of o.supplies||[]){
@@ -591,7 +604,9 @@ function groupOrders(orders){
       akut:[...meds.values()].some(m=>m.critical),
       persons:g.orders.reduce((s,o)=>s+(o.persons||1),0),
       receiver:g.orders.find(o=>o.canReceive),
-      kg, flights:Math.max(1,Math.ceil(kg/BOX_MAX_KG)),
+      contentKg:kg, flights:Math.max(1,Math.ceil(kg/Math.max(0.1,BOX_MAX_KG-BOX_TARE))),
+      get kg(){ return this.contentKg + this.flights*BOX_TARE; },
+      cold:[...meds.values()].some(m=>m.cold),
       firstAt:first.createdAt, status:STAGES[stageIdx]
     };
   }).sort((a,b)=>(b.akut-a.akut)||String(a.firstAt).localeCompare(String(b.firstAt)));
@@ -601,7 +616,7 @@ function groupOrders(orders){
 function demoOrders(){
   const t=h=>new Date(Date.now()-h*3600e3).toISOString();
   return [
-    {id:"ex1",name:"Exempel Andersson",phone:"070-000 00 01",persons:2,street:"Ronnebygatan 12",apartment:"Lgh 1102",postcode:"37133",city:"Karlskrona",lat:56.16236,lng:15.58601,landing:"Innergården",canReceive:true,medicines:[{name:"Insulin NovoRapid",dose:"100 E/ml",qty:2,critical:true}],supplies:["vatten","mat"],notes:"",createdAt:t(5)},
+    {id:"ex1",name:"Exempel Andersson",phone:"070-000 00 01",persons:2,street:"Ronnebygatan 12",apartment:"Lgh 1102",postcode:"37133",city:"Karlskrona",lat:56.16236,lng:15.58601,landing:"Innergården",canReceive:true,medicines:[{name:"Insulin NovoRapid",dose:"100 E/ml",qty:2,critical:true,cold:true}],supplies:["vatten","mat"],notes:"",createdAt:t(5)},
     {id:"ex2",name:"Exempel Berg",phone:"070-000 00 02",persons:1,street:"Ronnebygatan 12",apartment:"Lgh 1203",postcode:"371 33",city:"Karlskrona",lat:56.16240,lng:15.58610,canReceive:false,medicines:[{name:"Waran",dose:"2,5 mg",qty:1,critical:true}],supplies:["filt"],notes:"Ingen hiss, svårt med trappor",createdAt:t(4.2)},
     {id:"ex3",name:"Exempel Chen",phone:"070-000 00 03",persons:4,street:"Ronnebyg. 12",apartment:"Lgh 1001",postcode:"37133",city:"Karlskrona",lat:56.16233,lng:15.58596,canReceive:false,medicines:[{name:"Ventoline",dose:"0,1 mg/dos",qty:1,critical:false}],supplies:["vatten","barn","mat"],notes:"Bebis 8 månader",createdAt:t(3.1)},
     {id:"ex4",name:"Exempel Dahl",phone:"070-000 00 04",persons:2,street:"Borgmästaregatan 5",apartment:"",postcode:"37134",city:"Karlskrona",lat:56.16105,lng:15.58938,canReceive:true,medicines:[{name:"Levaxin",dose:"100 mikrog",qty:1,critical:false}],supplies:["hygien","ljus","radio"],notes:"",createdAt:t(2.5)},
@@ -664,11 +679,18 @@ function renderLogistik(){
         ${[["alla","Alla"],["akut","Akuta"],["ej","Ej skickade"]].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join("")}
       </div>
       <button type="button" class="btn btn-ghost btn-sm" id="demo-toggle">${S.demoOnly?"Tillbaka till inloggning":S.demo?"Visa riktiga beställningar":"Visa exempeldata"}</button>
+      <div class="wind">
+        <label for="wind-in">Vind nu (m/s)</label>
+        <input type="number" id="wind-in" min="0" max="60" step="1" inputmode="numeric" placeholder="–" value="${S.wind??""}">
+        ${S.wind==null||isNaN(S.wind)?`<span class="badge">Ange vind</span>`:flightStop()?`<span class="badge akut">Flygstopp</span>`:`<span class="badge levererad">Flygväder OK</span>`}
+      </div>
     </div>
+    ${flightStop()?`<div class="flightstop" role="status"><b>Flygstopp – vinden är ${S.wind} m/s</b><span>Drönaren klarar högst ${DRONE.maxWindMs} m/s. Packa lådorna nu, så kan de skickas så fort vinden mojnar. Akuta hus står överst och går först.</span></div>`:""}
     <div class="groups">
       ${shown.length? shown.map(groupCard).join("") : emptyState(src.length)}
     </div>`;
   root.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;renderLogistik();});
+  $("#wind-in").onchange=e=>{ const v=e.target.value.trim(); S.wind=v===""?null:parseFloat(v.replace(",",".")); try{localStorage.setItem("waam-wind",v)}catch(_){ } renderLogistik(); };
   $("#demo-toggle").onclick=()=>{ if(S.demoOnly){S.demoOnly=false;S.demo=false;} else S.demo=!S.demo; renderLogistik(); };
   const lo2=$("#logout2"); if(lo2) lo2.onclick=()=>S.sb.auth.signOut();
   const de=$("#demo-empty"); if(de) de.onclick=()=>{S.demo=true;renderLogistik();};
@@ -684,8 +706,8 @@ function emptyState(total){
 
 function groupCard(g){
   const gid=g.key.replace(/[^a-z0-9]/gi,"_");
-  const over=g.kg>BOX_MAX_KG, pct=Math.min(100,g.kg/BOX_MAX_KG*100);
-  const medRows=g.meds.map((m,i)=>`<li><label><input type="checkbox" id="pk-${gid}-m${i}" ${S.packed[`pk-${gid}-m${i}`]?"checked":""}><span class="q">${m.qty}×</span><span>${esc(m.name)} ${esc(m.dose||"")}${m.critical?`<span class="lv">LIVSVIKTIG</span>`:""}<span class="for">till ${esc(m.for.join(", "))}</span></span></label></li>`).join("");
+  const perBox=g.kg/g.flights, over=g.flights>1, pct=Math.min(100,perBox/BOX_MAX_KG*100);
+  const medRows=g.meds.map((m,i)=>`<li><label><input type="checkbox" id="pk-${gid}-m${i}" ${S.packed[`pk-${gid}-m${i}`]?"checked":""}><span class="q">${m.qty}×</span><span>${esc(m.name)} ${esc(m.dose||"")}${m.critical?`<span class="lv">LIVSVIKTIG</span>`:""}${m.cold?`<span class="kv">KYLVARA</span>`:""}<span class="for">till ${esc(m.for.join(", "))}</span></span></label></li>`).join("");
   const supRows=g.supplies.map((s,i)=>`<li><label><input type="checkbox" id="pk-${gid}-s${i}" ${S.packed[`pk-${gid}-s${i}`]?"checked":""}><span class="q">${s.qty}×</span><span>${esc(s.pack)}<span class="for">till ${esc(s.for.join(", "))}</span></span></label></li>`).join("");
   const recips=g.orders.slice().sort((a,b)=>String(a.apartment).localeCompare(String(b.apartment),"sv",{numeric:true})).map(o=>`
     <li><span class="who">${esc(o.name)}${o.apartment?` · ${esc(o.apartment)}`:""}</span>
@@ -700,7 +722,7 @@ function groupCard(g){
         <h2>${esc(g.street)}</h2>
         <div class="sub">${esc(String(g.postcode).replace(/^(\d{3})(\d{2})$/,"$1 $2"))} ${esc(g.city)}${g.c?` · <span class="mono">${g.c.lat.toFixed(4)}, ${g.c.lng.toFixed(4)}</span>`:" · ingen GPS"}${g.merged?" · ihopslagen via GPS":""}</div>
       </div>
-      <div class="badges">${g.akut?`<span class="badge akut">Akut</span>`:""}<span class="badge ${g.status}">${STAGE_LABEL[g.status]}</span></div>
+      <div class="badges">${g.akut?`<span class="badge akut">Akut</span>`:""}${g.cold?`<span class="badge kyl">Kylvara · isolerad låda</span>`:""}<span class="badge ${g.status}">${STAGE_LABEL[g.status]}</span></div>
     </div>
     <div class="g-body">
       <div class="g-col">
@@ -716,10 +738,10 @@ function groupCard(g){
       </div>
     </div>
     <div class="g-foot">
-      <div class="weightbar"><span class="wb ${over?"over":""}"><i style="width:${pct}%"></i></span><span><b class="mono" style="color:var(--ink)">${fmtKg(g.kg)}</b> av ${BOX_MAX_KG} kg${over?` · kräver ${g.flights} flygningar`:""}</span></div>
+      <div class="weightbar"><span class="wb ${over?"over":""}"><i style="width:${pct}%"></i></span><span><b class="mono" style="color:var(--ink)">${fmtKg(g.kg)}</b>${over?` totalt · ${g.flights} flygningar à max ${BOX_MAX_KG} kg`:` av ${BOX_MAX_KG} kg`} <span class="hint">(varav låda ${fmtKg(BOX_TARE*g.flights)})</span></span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" class="btn btn-ghost btn-sm" data-copy="${esc(g.key)}">Kopiera packlista</button>
-        ${next?`<button type="button" class="btn btn-primary btn-sm" data-advance="${esc(g.key)}">${next}</button>`:`<span class="badge levererad">Klar</span>`}
+        ${!next?`<span class="badge levererad">Klar</span>` : (g.status==="packad"&&flightStop())?`<button type="button" class="btn btn-primary btn-sm" disabled title="Vinden är för stark för drönaren">Flygstopp – väntar</button>` : `<button type="button" class="btn btn-primary btn-sm" data-advance="${esc(g.key)}">${next}</button>`}
       </div>
     </div>
   </article>`;
@@ -740,7 +762,7 @@ async function advance(key, groups){
 async function copyList(g, btn){
   if(!g) return;
   const lines=[`WAAM drönarlåda – ${g.street}, ${g.postcode} ${g.city}${g.akut?" [AKUT]":""}`,"",
-    ...g.meds.map(m=>`${m.qty}× ${m.name} ${m.dose||""}${m.critical?" (LIVSVIKTIG)":""} → ${m.for.join(", ")}`),
+    ...g.meds.map(m=>`${m.qty}× ${m.name} ${m.dose||""}${m.critical?" (LIVSVIKTIG)":""}${m.cold?" (KYLVARA)":""} → ${m.for.join(", ")}`),
     ...g.supplies.map(s=>`${s.qty}× ${s.pack} → ${s.for.join(", ")}`),"",
     `Vikt: ${fmtKg(g.kg)}${g.receiver?` · Mottagare: ${g.receiver.name}${g.receiver.apartment?" ("+g.receiver.apartment+")":""}, ${g.receiver.phone}`:""}`];
   const text=lines.join("\n");
