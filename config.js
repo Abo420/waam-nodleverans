@@ -2,6 +2,6 @@
 // Fyll i från Supabase → Project Settings → API.
 // Anon-nyckeln är gjord för att ligga publikt; säkerheten sköts av radsäkerheten i databasen.
 window.WAAM_CONFIG = {
-  supabaseUrl: "https://DIN-PROJEKT-ID.supabase.co",
-  supabaseAnonKey: "DIN-ANON-NYCKEL"
+  supabaseUrl: "https://gowzreeqjcgafewiyptf.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdvd3pyZWVxamNnYWZld2l5cHRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MTI2MTIsImV4cCI6MjEwNzQ4ODYxMn0.fVp3LbLNuC5gyxX1-vYtalq2NE4cJqIT1IgtcwByeCo"
 };
