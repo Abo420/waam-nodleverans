@@ -446,12 +446,12 @@ created_at, updated_at</pre>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="vendor/supabase.js?v=3"></script>
-<script src="config.js?v=4"></script>
+<script src="config.js?v=5"></script>
 <script>
 /* ================= config ================= */
 const CFG = window.WAAM_CONFIG || {};
 const DRONE = Object.assign({boxTareKg:0.6, maxPayloadKg:4.5, maxWindMs:12, rangeKm:10, speedMs:25, fleet:3}, CFG.drone||{});
-const BASE = Object.assign({name:"Bas (antagen): Karlskrona centrum", lat:56.1612, lng:15.5869}, CFG.base||{});
+const BASE = Object.assign({name:"Bas: BTH campus Gräsvik, Karlskrona", lat:56.1814, lng:15.5906}, CFG.base||{});
 const MED_KG=0.05, MERGE_M=40, HANDLING_S=60;
 const FLEET = [...Array(DRONE.fleet)].map((_,i)=>"Drönare "+(i+1));
 const AED_DRONE = "AED-drönare";

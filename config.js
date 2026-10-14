@@ -14,5 +14,5 @@ window.WAAM_CONFIG = {
     fleet: 3            // antal drönare för medicin (plus en för hjärtstartare)
   },
   // Drönarbasen – byt till er riktiga plats
-  base: { name: "Bas (antagen): Karlskrona centrum", lat: 56.1612, lng: 15.5869 }
+  base: { name: "Bas: BTH campus Gräsvik, Karlskrona", lat: 56.1814, lng: 15.5906 }
 };
