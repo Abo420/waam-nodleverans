@@ -723,7 +723,8 @@ function renderLogistik(){
     $("#demo-locked").onclick=()=>{S.demoOnly=true;S.demo=true;renderLogistik();};
     return;
   }
-  if(!$("#map")){
+  if(!$("#map") || (!S.map && window.L)){
+    destroyMap();
     root.innerHTML=`
       <div class="lhead"><div><span class="eyebrow">Låst vy · endast WAAM</span><h1 style="margin-top:8px">Logistik och drönare</h1></div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="demo-flag"></span>${S.isOwner?`<button type="button" class="btn btn-ghost btn-sm" id="logout2">Logga ut</button>`:""}</div></div>
