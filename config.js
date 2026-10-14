@@ -7,7 +7,12 @@ window.WAAM_CONFIG = {
   // Drönare och låda – byt till era riktiga värden
   drone: {
     boxTareKg: 0.6,     // lådans egen vikt tom (kg)
-    maxPayloadKg: 5,    // drönarens maxlast inkl. låda (kg)
-    maxWindMs: 12       // över denna vind blir det flygstopp (m/s)
-  }
+    maxPayloadKg: 4.5,  // drönarens maxlast inkl. låda (kg) – som Everdrone E3
+    maxWindMs: 12,      // över denna vind blir det flygstopp (m/s)
+    rangeKm: 10,        // räckvidd från basen (km)
+    speedMs: 25,        // marschfart (m/s), 25 m/s = 90 km/h
+    fleet: 3            // antal drönare för medicin (plus en för hjärtstartare)
+  },
+  // Drönarbasen – byt till er riktiga plats
+  base: { name: "Bas (antagen): Karlskrona centrum", lat: 56.1612, lng: 15.5869 }
 };

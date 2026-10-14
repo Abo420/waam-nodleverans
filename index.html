@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="WAAM – nödleverans av medicin och förnödenheter med drönare under krisens första 72 timmar.">
+<meta name="description" content="WAAM – drönarleverans av medicin till äldre i Karlskrona under krisens första 72 timmar.">
 <title>WAAM Nödleverans</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -206,6 +207,48 @@ html{color-scheme:light}
 body{margin:0}
 [hidden]{display:none!important}
 img{max-width:100%}
+/* ---- v2 additions ---- */
+.aed{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;background:var(--crit);color:#fff;border-radius:var(--r);padding:16px 18px}
+.aed .heart{font:800 34px/1 var(--f-display);font-stretch:80%}
+.aed h2{font-size:22px;color:#fff}
+.aed p{font-size:14px;opacity:.92}
+.aed .btn{background:#fff;color:var(--crit)}
+@media (max-width:640px){.aed{grid-template-columns:minmax(0,1fr)}}
+.aed-form{background:var(--surface);border:2px solid var(--crit);border-radius:var(--r);padding:18px;display:grid;gap:12px}
+.btn-crit{background:var(--crit);color:#fff;font-size:16px}
+.who-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.who-pick label{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;background:var(--surface)}
+.who-pick input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.who-pick label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.who-pick b{display:block;font-size:15px}
+.who-pick span span{font-size:13px;color:var(--muted)}
+select{width:100%;border:1.5px solid var(--line);background:var(--sunk);border-radius:8px;padding:10px 12px;min-height:44px;font:inherit;color:inherit}
+.track{display:grid;gap:16px}
+.steps-h{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.steps-h li{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.steps-h li i{display:block;height:6px;border-radius:3px;background:var(--line)}
+.steps-h li.done{color:var(--ink);font-weight:600}
+.steps-h li.done i{background:var(--ok)}
+.steps-h li.now i{background:var(--accent)}
+.eta{font:800 44px/1 var(--f-display);font-stretch:80%;font-variant-numeric:tabular-nums}
+.map-wrap{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;margin-bottom:16px}
+@media (max-width:900px){.map-wrap{grid-template-columns:minmax(0,1fr)}}
+#map{height:460px;border-radius:var(--r);border:1px solid var(--line);z-index:0;background:var(--sunk)}
+.fleet{display:grid;gap:8px;align-content:start}
+.drone{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:2px;font-size:13px}
+.drone b{font-size:14px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.prio{font:700 12px/1 var(--f-mono);padding:6px 8px;border-radius:5px}
+.prio.p0{background:var(--crit);color:#fff}
+.prio.p1{background:var(--crit-soft);color:var(--crit)}
+.prio.p2{background:var(--warn-soft);color:var(--warn)}
+.prio.p3{background:var(--sunk);color:var(--muted)}
+.group.aedcard{border:2px solid var(--crit)}
+.leaflet-container{font:inherit}
+.drone-icon{font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+.badge.zone{background:var(--warn-soft);color:var(--warn)}
 </style>
 </head>
 <body>
@@ -215,73 +258,94 @@ img{max-width:100%}
     <div class="brand">WAAM <small>Nödleverans · 72 h</small></div>
     <nav class="tabs" role="tablist" aria-label="Vyer">
       <button class="tab" role="tab" id="tab-bestall" aria-selected="true" data-view="bestall">Beställ</button>
+      <button class="tab" role="tab" id="tab-folj" aria-selected="false" data-view="folj">Följ beställning</button>
       <button class="tab" role="tab" id="tab-logistik" aria-selected="false" data-view="logistik">Logistik<span class="lock" id="lockmark">· låst</span></button>
-      <button class="tab" role="tab" id="tab-system" aria-selected="false" data-view="system">Så funkar systemet</button>
+      <button class="tab" role="tab" id="tab-system" aria-selected="false" data-view="system">Systemet</button>
     </nav>
   </div>
 </header>
 
-<!-- ============ VIEW: BESTÄLL (public) ============ -->
+<!-- ============ BESTÄLL ============ -->
 <main id="view-bestall">
   <div class="wrap">
     <section class="hero">
       <span class="eyebrow">De första 72 timmarna</span>
-      <h1>Medicin och förnödenheter, levererat med drönare</h1>
-      <p class="lead">Fyll i vad ditt hushåll behöver. Vi samlar ihop beställningar från samma hus och skickar allt i en gemensam drönarlåda. Medicin som är livsviktig packas först.</p>
+      <h1>Medicin med drönare när du inte kan ta dig ut</h1>
+      <p class="lead">För äldre i Karlskrona som inte kan hämta sin medicin när stormen slagit ut strömmen och hissarna. Du som anhörig, eller du som arbetar i hemtjänsten, beställer här. Apoteket kontrollerar receptet och drönaren flyger lådan till huset.</p>
       <div class="timeline" aria-label="Insatsens tidsfönster">
         <div class="tl-track"></div>
         <div class="tl-ticks mono"><span>0 h · katastrof</span><span>24 h</span><span>48 h</span><span>72 h</span></div>
       </div>
-      <div class="alert112" role="note"><b>112</b><p>Är någon i livsfara just nu? Ring 112 först. Det här formuläret ersätter inte ambulans eller räddningstjänst.</p></div>
     </section>
+
+    <section class="aed" aria-labelledby="aed-h">
+      <div class="heart" aria-hidden="true">AED</div>
+      <div><h2 id="aed-h">Hjärtstopp? Ring 112 först.</h2><p>Skicka sedan en drönare med hjärtstartare direkt till adressen. Den lyfter utan att vänta på godkännande.</p></div>
+      <button type="button" class="btn" id="aed-open">Skicka hjärtstartare</button>
+    </section>
+    <form id="aed-form" class="aed-form" hidden novalidate style="margin-top:12px">
+      <div class="row">
+        <div class="field" style="grid-column:span 2"><label class="lbl" for="a-street">Adress där personen finns <span class="req">*</span></label><input type="text" id="a-street" autocomplete="address-line1" placeholder="Ronnebygatan 12"></div>
+        <div class="field"><label class="lbl" for="a-city">Ort</label><input type="text" id="a-city" value="Karlskrona"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label class="lbl" for="a-phone">Ditt telefonnummer <span class="req">*</span></label><input type="tel" id="a-phone" inputmode="tel" placeholder="070-123 45 67"></div>
+        <div class="field"><label class="lbl" for="a-gps">GPS (valfritt)</label><input type="text" id="a-gps" class="mono" placeholder="56.1612, 15.5869"></div>
+      </div>
+      <div class="submitbar"><button type="submit" class="btn btn-crit" id="aed-send">Skicka drönare nu</button><button type="button" class="btn btn-ghost" id="aed-cancel">Avbryt</button><span class="status-msg" id="aed-status" role="status"></span></div>
+    </form>
 
     <div class="formgrid">
       <div id="form-area">
         <form id="order-form" novalidate>
           <fieldset>
-            <legend>Vem är du?</legend>
-            <div class="row">
-              <div class="field"><label class="lbl" for="f-name">Fullständigt namn <span class="req">*</span></label><input type="text" id="f-name" autocomplete="name" required></div>
-              <div class="field"><label class="lbl" for="f-phone">Telefonnummer <span class="req">*</span></label><input type="tel" id="f-phone" autocomplete="tel" inputmode="tel" placeholder="070-123 45 67" required></div>
+            <legend>Vem beställer?</legend>
+            <div class="who-pick" role="radiogroup" aria-label="Beställare">
+              <label><input type="radio" name="who" value="privat" checked><span><b>Privatperson</b><span>Till mig själv eller en anhörig</span></span></label>
+              <label><input type="radio" name="who" value="personal"><span><b>Hemtjänst eller vårdpersonal</b><span>Planerare eller sjuksköterska med ansvar för kunden</span></span></label>
             </div>
-            <div class="field" style="max-width:220px"><label class="lbl" for="f-persons">Personer i hushållet <span class="req">*</span></label><input type="number" id="f-persons" min="1" max="20" value="1" required></div>
-            <p class="hint">Vi ringer bara om vi inte hittar fram eller behöver fråga om din medicin.</p>
+            <div class="row">
+              <div class="field"><label class="lbl" for="r-name">Ditt namn <span class="req">*</span></label><input type="text" id="r-name" autocomplete="name"></div>
+              <div class="field"><label class="lbl" for="r-phone">Ditt telefonnummer <span class="req">*</span></label><input type="tel" id="r-phone" autocomplete="tel" inputmode="tel" placeholder="070-123 45 67"></div>
+            </div>
+            <div class="row" id="staff-fields" hidden>
+              <div class="field"><label class="lbl" for="r-role">Roll</label><select id="r-role"><option value="planerare">Planerare</option><option value="ssk">Sjuksköterska</option><option value="hemtjanst">Undersköterska / vårdbiträde</option></select></div>
+              <div class="field"><label class="lbl" for="r-unit">Enhet</label><input type="text" id="r-unit" placeholder="T.ex. Hemtjänst Trossö"></div>
+            </div>
           </fieldset>
 
           <fieldset>
-            <legend>Var ska lådan landa?</legend>
+            <legend>Vem ska få medicinen?</legend>
+            <label class="check" id="self-wrap"><input type="checkbox" id="f-self"><span>Medicinen är till mig</span></label>
             <div class="row">
-              <div class="field" style="grid-column:span 2"><label class="lbl" for="f-street">Gatuadress <span class="req">*</span></label><input type="text" id="f-street" autocomplete="address-line1" placeholder="Ronnebygatan 12" required></div>
+              <div class="field"><label class="lbl" for="f-name">Mottagarens namn <span class="req">*</span></label><input type="text" id="f-name"></div>
+              <div class="field"><label class="lbl" for="f-phone">Mottagarens telefon</label><input type="tel" id="f-phone" inputmode="tel"></div>
+            </div>
+            <div class="row">
+              <div class="field" style="grid-column:span 2"><label class="lbl" for="f-street">Gatuadress <span class="req">*</span></label><input type="text" id="f-street" autocomplete="address-line1" placeholder="Ronnebygatan 12"></div>
               <div class="field"><label class="lbl" for="f-apt">Lägenhet / våning</label><input type="text" id="f-apt" placeholder="Lgh 1102"></div>
             </div>
             <div class="row">
-              <div class="field"><label class="lbl" for="f-zip">Postnummer <span class="req">*</span></label><input type="text" id="f-zip" autocomplete="postal-code" inputmode="numeric" placeholder="371 33" required></div>
-              <div class="field"><label class="lbl" for="f-city">Ort <span class="req">*</span></label><input type="text" id="f-city" autocomplete="address-level2" placeholder="Karlskrona" required></div>
+              <div class="field"><label class="lbl" for="f-zip">Postnummer <span class="req">*</span></label><input type="text" id="f-zip" inputmode="numeric" placeholder="371 33"></div>
+              <div class="field"><label class="lbl" for="f-city">Ort <span class="req">*</span></label><input type="text" id="f-city" value="Karlskrona"></div>
             </div>
-            <div class="field"><label class="lbl" for="f-gps">Koordinater (GPS)</label><input type="text" id="f-gps" class="mono" placeholder="56.1612, 15.5869"><span class="hint">Valfritt men hjälper drönaren. Öppna kartappen, håll fingret på din position och kopiera siffrorna.</span></div>
-            <div class="field"><label class="lbl" for="f-landing">Bästa landningsplats</label><input type="text" id="f-landing" placeholder="T.ex. innergården bakom port B"></div>
-            <label class="check"><input type="checkbox" id="f-receiver"><span>Jag kan ta emot lådan för hela huset och dela ut till grannarna</span></label>
+            <div class="field"><label class="lbl" for="f-gps">Koordinater (GPS)</label><input type="text" id="f-gps" class="mono" placeholder="56.1612, 15.5869"><span class="hint">Valfritt. Lämnar du tomt letar vi upp adressen på kartan.</span></div>
+            <div class="field"><label class="lbl" for="f-landing">Var kan lådan landa?</label><input type="text" id="f-landing" placeholder="T.ex. innergården bakom port B"></div>
+            <label class="check"><input type="checkbox" id="f-receiver"><span>Någon på plats (granne, hemtjänst, fastighetsskötare) kan ta emot lådan och bära upp den</span></label>
           </fieldset>
 
           <fieldset>
             <legend>Medicin</legend>
-            <p class="hint">Skriv namnet som det står på förpackningen. Ange styrka om du vet den.</p>
+            <p class="hint">Skriv namnet som det står på förpackningen. Apoteket kontrollerar mot e-receptet innan lådan packas.</p>
             <div id="meds" style="display:grid;gap:10px"></div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-              <button type="button" class="btn btn-ghost btn-sm" id="add-med">+ Lägg till läkemedel</button>
-              <label class="check"><input type="checkbox" id="f-nomed"><span>Vi behöver ingen medicin</span></label>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Övriga förnödenheter</legend>
-            <p class="hint">Välj det ni saknar. Mängden räknas ut efter antal personer, för 72 timmar.</p>
-            <div class="chips" id="supply-chips"></div>
+            <div><button type="button" class="btn btn-ghost btn-sm" id="add-med">+ Lägg till läkemedel</button></div>
+            <div class="field" style="max-width:360px"><label class="lbl" for="f-runsout">När tar medicinen slut? <span class="req">*</span></label>
+              <select id="f-runsout"><option value="">Välj …</option><option value="slut">Den är redan slut</option><option value="24h">Inom 24 timmar</option><option value="3d">Inom 3 dagar</option><option value="senare">Senare än 3 dagar</option></select></div>
           </fieldset>
 
           <fieldset>
             <legend>Något mer vi bör veta?</legend>
-            <div class="field"><label class="lbl" for="f-notes">Meddelande</label><textarea id="f-notes" placeholder="T.ex. rullstol, ingen hiss, små barn, husdjur"></textarea></div>
+            <div class="field"><label class="lbl" for="f-notes">Meddelande</label><textarea id="f-notes" placeholder="T.ex. hissen står still, rullator, dosdispenserade påsar"></textarea></div>
           </fieldset>
 
           <div class="submitbar">
@@ -296,17 +360,17 @@ img{max-width:100%}
         <div class="panel">
           <h3>Så går det till</h3>
           <ol class="steps">
-            <li><span class="n">1</span><div><b>Du beställer</b><p>Ungefär två minuter. Du kan ändra beställningen efteråt.</p></div></li>
-            <li><span class="n">2</span><div><b>Vi packar per hus</b><p>Alla beställningar till samma adress läggs i en låda.</p></div></li>
-            <li><span class="n">3</span><div><b>Drönaren landar</b><p>Lådan märks med lägenhet och namn, så alla får rätt sak.</p></div></li>
+            <li><span class="n">1</span><div><b>Du beställer</b><p>Själv, som anhörig eller som hemtjänstpersonal.</p></div></li>
+            <li><span class="n">2</span><div><b>Apoteket packar</b><p>Receptet kontrolleras. Akuta beställningar går först.</p></div></li>
+            <li><span class="n">3</span><div><b>Drönaren flyger</b><p>Du ser när lådan är på väg och när den är framme.</p></div></li>
           </ol>
         </div>
         <div class="panel">
           <h3>Ha det här nära till hands</h3>
           <ul>
-            <li>Dina läkemedelsförpackningar eller receptlistan</li>
-            <li>Lägenhetsnumret (står ofta på dörren)</li>
-            <li>En laddad telefon så vi når dig</li>
+            <li>Läkemedelsförpackningen eller receptlistan</li>
+            <li>Lägenhetsnummer och portkod</li>
+            <li>Vem som kan ta emot lådan</li>
           </ul>
         </div>
       </aside>
@@ -314,499 +378,504 @@ img{max-width:100%}
   </div>
 </main>
 
-<!-- ============ VIEW: LOGISTIK (owner only) ============ -->
+<!-- ============ FÖLJ ============ -->
+<main id="view-folj" hidden>
+  <div class="wrap" style="padding-block:32px 64px;display:grid;gap:18px;max-width:720px">
+    <div><span class="eyebrow">Följ beställning</span><h1 style="font-size:clamp(28px,4vw,40px);margin-top:8px">Var är min låda?</h1></div>
+    <form id="track-form" class="panel" novalidate>
+      <div class="field"><label class="lbl" for="t-ref">Referensnummer</label><input type="text" id="t-ref" class="mono" placeholder="WAAM-1A2B3C4D" autocomplete="off"></div>
+      <div class="submitbar"><button class="btn btn-primary" type="submit">Visa status</button><span class="err" id="t-err" role="alert"></span></div>
+      <div id="my-refs" class="chips"></div>
+    </form>
+    <div id="track-out"></div>
+  </div>
+</main>
+
+<!-- ============ LOGISTIK ============ -->
 <main id="view-logistik" hidden>
   <div class="wrap" id="logistik-root"></div>
 </main>
 
-<!-- ============ VIEW: SYSTEM (documentation for the team) ============ -->
+<!-- ============ SYSTEM ============ -->
 <main id="view-system" hidden>
   <div class="wrap sys">
-    <div>
-      <span class="eyebrow">För teamet</span>
-      <h1 style="font-size:clamp(28px,4vw,40px);margin-top:8px">Hur WAAM-systemet är uppbyggt</h1>
-    </div>
-    <div class="sys-grid">
-      <section>
-        <h2>Komponentstruktur</h2>
-        <pre>App
-├─ TopBar            (vy-flikar, låsmarkering)
-├─ BestallView       (offentlig)
-│  ├─ Hero + 72h-tidslinje + 112-ruta
-│  ├─ OrderForm
-│  │  ├─ PersonFields
-│  │  ├─ AddressFields  (adress, lgh, GPS, mottagare)
-│  │  ├─ MedicineList → MedicineRow ×n
-│  │  ├─ SupplyChips
-│  │  └─ Notes
-│  ├─ Confirmation   (referens + status)
-│  └─ GuidanceRail
-├─ LogistikView      (endast ägaren/WAAM)
-│  ├─ Stats          (beställningar, lådor, akuta)
-│  ├─ Filter         (alla / akuta / ej skickade)
-│  └─ BuildingCard ×n
-│     ├─ PackList    (sammanslagen medicin + förnödenheter)
-│     ├─ Recipients  (hushåll i huset)
-│     └─ StatusActions
-└─ SystemView        (den här sidan)</pre>
-      </section>
-      <section>
-        <h2>Datastruktur: tabellen <span class="mono">orders</span></h2>
-        <pre>id           uuid        primärnyckel = referensnr
-created_at   timestamptz när beställningen kom in
-updated_at   timestamptz senaste statusändring
-name         text        "Anna Svensson"
-phone        text        "070-123 45 67"
-persons      int         3
-street       text        "Ronnebygatan 12"
-apartment    text        "Lgh 1102"
-postcode     text        "37133"
-city         text        "Karlskrona"
-lat, lng     float8      56.1612, 15.5869 (valfritt)
-landing      text        "Innergården"
-can_receive  bool        tar emot för hela huset
-medicines    jsonb       [{ name, dose, qty, critical, cold }]
-supplies     jsonb       ["vatten", "mat"]
-notes        text        "Ingen hiss"
-status       text        ny → packad → skickad → levererad</pre>
-      </section>
-    </div>
+    <div><span class="eyebrow">För teamet</span><h1 style="font-size:clamp(28px,4vw,40px);margin-top:8px">Hur WAAM-systemet fungerar</h1></div>
     <section>
-      <h2>Så grupperas beställningar per fastighet</h2>
+      <h2>Flödet</h2>
       <ol>
-        <li><b>Normalisera adressen.</b> Gatuadressen görs om till gemener, punkter och dubbla mellanslag tas bort, och allt efter "lgh", "vån" eller "tr" stryks. Postnumret skrivs utan mellanslag. Nyckeln blir t.ex. <span class="mono">ronnebygatan 12|37133</span>.</li>
-        <li><b>Gruppera på nyckeln.</b> Alla hushåll med samma nyckel hamnar i samma låda.</li>
-        <li><b>Slå ihop med GPS.</b> Två grupper vars koordinater ligger inom 40 meter räknas som samma hus, även om adressen stavats olika.</li>
-        <li><b>Bygg packlistan.</b> Samma läkemedel och styrka summeras, men varje rad behåller vem den är till. Förnödenheter räknas ut per person för 72 timmar.</li>
-        <li><b>Väg lådan.</b> Innehållet plus lådans egen vikt jämförs med drönarens maxlast (inställt i <span class="mono">config.js</span>). Blir det tyngre visas hur många flygningar som behövs.</li>
-        <li><b>Kylvara.</b> Läkemedel som kräver kylning, t.ex. insulin, markeras så att de packas i den isolerade lådan och prioriteras.</li>
-        <li><b>Flygväder.</b> Logistikansvarig anger aktuell vind. Över drönarens gräns blir det flygstopp: lådor kan packas men inte skickas förrän vinden mojnat.</li>
-        <li><b>Prioritera.</b> Hus med minst en livsviktig medicin hamnar överst som <i>Akut</i>, sedan sorteras efter äldsta beställning.</li>
+        <li><b>Beställning.</b> En privatperson eller hemtjänstpersonal (planerare, sjuksköterska) beställer medicin åt en äldre person och anger när medicinen tar slut.</li>
+        <li><b>Prioritering.</b> Varje beställning får en prioritet: P0 hjärtstopp, P1 akut (slut eller inom 24 h), P2 hög (kylvara eller inom 3 dagar), P3 normal. Kön sorteras efter prioritet och sedan ålder.</li>
+        <li><b>Packning.</b> Apoteket kontrollerar e-receptet. Beställningar till samma hus slås ihop till en låda.</li>
+        <li><b>Utskick.</b> Logistik tilldelar en ledig drönare. Systemet räknar ut ankomsttid från avstånd och hastighet. Över vindgränsen blir det flygstopp.</li>
+        <li><b>Spårning.</b> Beställaren följer status med referensnumret: mottagen, packas, på väg (med ankomsttid), levererad.</li>
+        <li><b>Hjärtstopp.</b> En hjärtstartare skickas direkt med en egen drönare, utan godkännande. 112 ska alltid ringas först.</li>
       </ol>
     </section>
-    <section>
-      <h2>Förnödenheter och vikter i packlistan</h2>
-      <div class="tablewrap"><table id="supply-table"><thead><tr><th>Val</th><th>Packas som</th><th>Mängd</th><th>Vikt/st</th></tr></thead><tbody></tbody></table></div>
-      <p class="hint">Vattenmängden utgår från MSB:s råd om 3 liter per person och dygn. En drönarlåda rymmer bara en del av det, så vatten levereras som en startmängd plus reningstabletter.</p>
-    </section>
+    <div class="sys-grid">
+      <section>
+        <h2>Datastruktur: <span class="mono">orders</span></h2>
+        <pre>id              uuid   referensnr = sista 8 tecknen
+kind            medicin | aed
+requester_role  privat | planerare | ssk | hemtjanst
+requester_name, requester_phone, requester_unit
+name, phone     mottagaren
+street, apartment, postcode, city
+lat, lng        GPS (eller hämtad från adressen)
+landing, can_receive
+medicines       [{ name, dose, qty, cold }]
+runs_out        slut | 24h | 3d | senare
+status          ny → packad → skickad → levererad
+drone           tilldelad drönare
+dispatched_at, eta   tid för utskick och ankomst
+created_at, updated_at</pre>
+      </section>
+      <section>
+        <h2>Antaganden i prototypen</h2>
+        <div class="tablewrap"><table id="assume-table"><tbody></tbody></table></div>
+        <p class="hint">Ändras i <span class="mono">config.js</span>. Lastgränsen motsvarar Everdrones E3 (4,5 kg), räckvidd och fart ligger i nivå med dagens leveransdrönare.</p>
+      </section>
+    </div>
     <section>
       <h2>Vem ser vad</h2>
-      <p>Vem som helst kan skicka en beställning utan att logga in, men ingen kan läsa andras. Databasen (Supabase) har radsäkerhet: anonyma besökare får bara <i>lägga till</i> rader. Bara WAAM-konton som finns i tabellen <span class="mono">admins</span> kan logga in i logistikvyn, läsa beställningar och ändra status.</p>
+      <p>Vem som helst kan skicka en beställning och följa sin egen med referensnumret, men ingen kan läsa andras. Bara WAAM-konton i tabellen <span class="mono">admins</span> kan logga in i logistikvyn och se kartan, kön och alla beställningar.</p>
     </section>
   </div>
 </main>
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="vendor/supabase.js?v=3"></script>
-<script src="config.js?v=3"></script>
+<script src="config.js?v=4"></script>
 <script>
-/* ---------- config ---------- */
-const SUPPLIES = [
-  {key:"vatten",  label:"Vatten",            pack:"Vatten 1,5 L + reningstabletter", per:"person",  unit:"st", kg:1.55},
-  {key:"mat",     label:"Mat för 72 h",      pack:"Matranson 72 h",                  per:"person",  unit:"st", kg:0.9},
-  {key:"hygien",  label:"Hygienartiklar",    pack:"Hygienpaket",                     per:"hushall", unit:"st", kg:0.4},
-  {key:"barn",    label:"Barnmat & blöjor",  pack:"Barnpaket (mat + blöjor)",        per:"hushall", unit:"st", kg:0.8},
-  {key:"forsta",  label:"Första hjälpen",    pack:"Första hjälpen-kit",              per:"hushall", unit:"st", kg:0.35},
-  {key:"ljus",    label:"Ficklampa",         pack:"Ficklampa + batterier",           per:"hushall", unit:"st", kg:0.3},
-  {key:"filt",    label:"Värmefilt",         pack:"Värmefilt (folie)",               per:"person",  unit:"st", kg:0.06},
-  {key:"radio",   label:"Vevradio",          pack:"Vevradio",                        per:"hushall", unit:"st", kg:0.4},
-];
-const DRONE = Object.assign({boxTareKg:0.6, maxPayloadKg:5, maxWindMs:12}, (window.WAAM_CONFIG||{}).drone||{});
-const MED_KG = 0.05, BOX_MAX_KG = DRONE.maxPayloadKg, BOX_TARE = DRONE.boxTareKg, MERGE_M = 40;
-const STAGES = ["ny","packad","skickad","levererad"];
-const STAGE_LABEL = {ny:"Ny",packad:"Packad",skickad:"Skickad",levererad:"Levererad"};
-const NEXT_ACTION = {ny:"Markera som packad",packad:"Markera som skickad",skickad:"Markera som levererad"};
+/* ================= config ================= */
+const CFG = window.WAAM_CONFIG || {};
+const DRONE = Object.assign({boxTareKg:0.6, maxPayloadKg:4.5, maxWindMs:12, rangeKm:10, speedMs:25, fleet:3}, CFG.drone||{});
+const BASE = Object.assign({name:"Bas (antagen): Karlskrona centrum", lat:56.1612, lng:15.5869}, CFG.base||{});
+const MED_KG=0.05, MERGE_M=40, HANDLING_S=60;
+const FLEET = [...Array(DRONE.fleet)].map((_,i)=>"Drönare "+(i+1));
+const AED_DRONE = "AED-drönare";
+const STAGES=["ny","packad","skickad","levererad"];
+const STAGE_LABEL={ny:"Mottagen",packad:"Packad",skickad:"På väg",levererad:"Levererad"};
+const RUNS={slut:"Redan slut","24h":"Slut inom 24 h","3d":"Slut inom 3 dagar",senare:"Senare än 3 dagar"};
+const ROLE={privat:"Privatperson",planerare:"Planerare",ssk:"Sjuksköterska",hemtjanst:"Undersköterska/vårdbiträde"};
+const PRIO_LABEL=["P0 HJÄRTSTOPP","P1 AKUT","P2 HÖG","P3 NORMAL"];
+const PRIO_COLOR=["#B4232B","#E03131","#E8A317","#6B7785"];
 
-/* ---------- state ---------- */
-const S = {sb:null,session:null,isOwner:false,orders:[],demo:false,filter:"alla",packed:{},demoStatus:{},view:"bestall",channel:null,wind:null};
-try{ const w=localStorage.getItem("waam-wind"); if(w!==null&&w!=="") S.wind=parseFloat(w); }catch(e){}
-const flightStop = () => S.wind!=null && !isNaN(S.wind) && S.wind > DRONE.maxWindMs;
-const $ = s => document.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+/* ================= state ================= */
+const S={sb:null,session:null,isOwner:false,orders:[],demo:false,demoOnly:false,demoState:{},filter:"alla",view:"bestall",channel:null,wind:null,map:null,layers:null,trackRef:null,trackTimer:null};
+try{const w=localStorage.getItem("waam-wind"); if(w) S.wind=parseFloat(w);}catch(e){}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const flightStop=()=>S.wind!=null&&!isNaN(S.wind)&&S.wind>DRONE.maxWindMs;
+function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600);}
+const refOf=id=>"WAAM-"+String(id||"").replace(/-/g,"").slice(-8).toUpperCase();
+const hhmm=d=>new Date(d).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
+const fmtKg=n=>n.toFixed(1).replace(".",",")+" kg";
+const ago=iso=>{if(!iso)return"";const m=Math.round((Date.now()-new Date(iso))/60000);return m<60?`${m} min sedan`:`${Math.floor(m/60)} h ${m%60} min sedan`;};
+function untilTxt(iso){const s=Math.round((new Date(iso)-Date.now())/1000); if(s<=0) return "framme"; const m=Math.floor(s/60); return m>0?`om ${m} min ${s%60} s`:`om ${s} s`;}
 
-function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600);}
+/* ================= geo ================= */
+function distM(a,b){const R=6371000,t=x=>x*Math.PI/180;const dLat=t(b.lat-a.lat),dLng=t(b.lng-a.lng);const h=Math.sin(dLat/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function parseGps(s){const m=String(s||"").replace(/[^\d.,\-\s]/g," ").match(/(-?\d{1,2}[.,]\d+)\s*[,; ]\s*(-?\d{1,3}[.,]\d+)/);if(!m)return null;const lat=parseFloat(m[1].replace(",",".")),lng=parseFloat(m[2].replace(",","."));return(Math.abs(lat)<=90&&Math.abs(lng)<=180)?{lat,lng}:null;}
+async function geocode(q){
+  try{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),6000);
+    const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=se&q="+encodeURIComponent(q),{signal:ac.signal,headers:{"Accept-Language":"sv"}});
+    clearTimeout(t); const j=await r.json(); return j[0]?{lat:+j[0].lat,lng:+j[0].lon}:null;}catch(e){return null;}
+}
+const flightSec=p=>p&&p.lat!=null?distM(BASE,p)/DRONE.speedMs:300;
+const etaFrom=(p,from=Date.now())=>new Date(from+(flightSec(p)+HANDLING_S)*1000).toISOString();
 
-/* ---------- tabs ---------- */
-function show(view){
-  S.view=view;
-  for(const v of ["bestall","logistik","system"]){
-    $("#view-"+v).hidden = v!==view;
-    $("#tab-"+v).setAttribute("aria-selected", v===view);
-  }
-  if(view==="logistik") renderLogistik();
-  try{localStorage.setItem("waam-view",view)}catch(e){}
+/* ================= views ================= */
+function show(v){
+  S.view=v;
+  for(const x of ["bestall","folj","logistik","system"]){$("#view-"+x).hidden=x!==v;$("#tab-"+x).setAttribute("aria-selected",x===v);}
+  if(v==="logistik") renderLogistik();
+  if(v==="folj") renderMyRefs();
+  try{localStorage.setItem("waam-view",v)}catch(e){}
   window.scrollTo({top:0});
+  if(S.map) setTimeout(()=>{S.map.invalidateSize();S.map.fitBounds(S.zoneBounds,{padding:[10,10]});},60);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>show(b.dataset.view)));
 
-/* ---------- form building ---------- */
-function supplyChips(){
-  $("#supply-chips").innerHTML = SUPPLIES.map(s=>`<label class="chip"><input type="checkbox" value="${s.key}" id="sup-${s.key}"><span>${esc(s.label)} <small>${s.per==="person"?"/person":"/hushåll"}</small></span></label>`).join("");
-  $("#supply-table tbody").innerHTML = SUPPLIES.map(s=>`<tr><td>${esc(s.label)}</td><td>${esc(s.pack)}</td><td>1 ${s.per==="person"?"per person":"per hushåll"}</td><td class="mono">${s.kg.toFixed(2).replace(".",",")} kg</td></tr>`).join("");
-}
+/* ================= order form ================= */
 let medSeq=0;
 function addMed(m={}){
-  const i=++medSeq, el=document.createElement("div");
-  el.className="med"; el.dataset.i=i;
+  const i=++medSeq, el=document.createElement("div"); el.className="med";
   el.innerHTML=`
     <div class="field f-name"><label class="lbl" for="m-name-${i}">Läkemedel</label><input type="text" id="m-name-${i}" class="m-name" placeholder="T.ex. Insulin NovoRapid" value="${esc(m.name)}"></div>
     <div class="field"><label class="lbl" for="m-dose-${i}">Styrka</label><input type="text" id="m-dose-${i}" class="m-dose" placeholder="100 E/ml" value="${esc(m.dose)}"></div>
     <div class="field"><label class="lbl" for="m-qty-${i}">Antal förp.</label><input type="number" id="m-qty-${i}" class="m-qty" min="1" max="20" value="${m.qty||1}"></div>
     <button type="button" class="icon-btn rm" aria-label="Ta bort läkemedel">×</button>
-    <label class="check crit"><input type="checkbox" class="m-crit" id="m-crit-${i}" ${m.critical?"checked":""}><span><b>Livsviktig</b> – medicinen tar slut inom 24 timmar</span></label>
-    <label class="check crit"><input type="checkbox" class="m-cold" id="m-cold-${i}" ${m.cold?"checked":""}><span><b>Kräver kylning</b> – t.ex. insulin, ska förvaras i kylskåp</span></label>`;
+    <label class="check crit"><input type="checkbox" class="m-cold" id="m-cold-${i}" ${m.cold?"checked":""}><span><b>Kräver kylning</b> – t.ex. insulin</span></label>`;
   el.querySelector(".rm").onclick=()=>{el.remove(); if(!$("#meds").children.length) addMed();};
   $("#meds").appendChild(el);
 }
-$("#add-med").onclick=()=>{addMed(); $("#f-nomed").checked=false; syncNoMed(); $("#meds .med:last-child .m-name").focus();};
-function syncNoMed(){const off=$("#f-nomed").checked; $("#meds").hidden=off; $("#add-med").hidden=off;}
-$("#f-nomed").onchange=syncNoMed;
-
-function parseGps(s){
-  const m=String(s||"").replace(/[^\d.,\-\s]/g," ").match(/(-?\d{1,2}[.,]\d+)\s*[,; ]\s*(-?\d{1,3}[.,]\d+)/);
-  if(!m) return null;
-  const lat=parseFloat(m[1].replace(",",".")), lng=parseFloat(m[2].replace(",","."));
-  return (Math.abs(lat)<=90&&Math.abs(lng)<=180)?{lat,lng}:null;
+$("#add-med").onclick=()=>{addMed(); $("#meds .med:last-child .m-name").focus();};
+function syncWho(){
+  const staff=document.querySelector('input[name="who"]:checked').value==="personal";
+  $("#staff-fields").hidden=!staff; $("#self-wrap").hidden=staff; if(staff) $("#f-self").checked=false;
 }
+document.querySelectorAll('input[name="who"]').forEach(r=>r.onchange=syncWho);
+$("#f-self").onchange=()=>{ if($("#f-self").checked){ $("#f-name").value=$("#r-name").value; $("#f-phone").value=$("#r-phone").value; } };
 
 function readForm(){
-  const v=id=>$(id).value.trim();
-  const errs=[];
-  const req=[["#f-name","Skriv ditt namn."],["#f-phone","Skriv ett telefonnummer så vi kan nå dig."],["#f-street","Skriv gatuadressen."],["#f-zip","Skriv postnumret."],["#f-city","Skriv orten."]];
+  const v=id=>$(id).value.trim(), errs=[];
   document.querySelectorAll("[aria-invalid]").forEach(e=>e.removeAttribute("aria-invalid"));
-  for(const [id,msg] of req){ if(!v(id)){ $(id).setAttribute("aria-invalid","true"); errs.push([id,msg]); } }
-  if(v("#f-phone") && v("#f-phone").replace(/\D/g,"").length<7){ $("#f-phone").setAttribute("aria-invalid","true"); errs.push(["#f-phone","Telefonnumret verkar för kort."]); }
+  const need=[["#r-name","Skriv ditt namn."],["#r-phone","Skriv ditt telefonnummer."],["#f-name","Skriv mottagarens namn."],["#f-street","Skriv gatuadressen."],["#f-zip","Skriv postnumret."],["#f-city","Skriv orten."],["#f-runsout","Välj när medicinen tar slut."]];
+  for(const [id,msg] of need) if(!v(id)){$(id).setAttribute("aria-invalid","true");errs.push([id,msg]);}
   const gpsRaw=v("#f-gps"), gps=parseGps(gpsRaw);
-  if(gpsRaw && !gps){ $("#f-gps").setAttribute("aria-invalid","true"); errs.push(["#f-gps","Koordinaterna ska se ut som 56.1612, 15.5869. Lämna tomt om du är osäker."]); }
-  const meds = $("#f-nomed").checked ? [] : [...document.querySelectorAll("#meds .med")].map(el=>({
-    name:el.querySelector(".m-name").value.trim(), dose:el.querySelector(".m-dose").value.trim(),
-    qty:Math.max(1,Math.min(20,parseInt(el.querySelector(".m-qty").value)||1)), critical:el.querySelector(".m-crit").checked, cold:el.querySelector(".m-cold").checked
-  })).filter(m=>m.name);
-  const supplies=[...document.querySelectorAll("#supply-chips input:checked")].map(i=>i.value);
-  if(!meds.length && !supplies.length) errs.push(["#add-med","Välj minst ett läkemedel eller en förnödenhet."]);
-  return {errs, data:{
-    name:v("#f-name"), phone:v("#f-phone"), persons:Math.max(1,Math.min(20,parseInt($("#f-persons").value)||1)),
-    street:v("#f-street"), apartment:v("#f-apt"), postcode:v("#f-zip").replace(/\s/g,""), city:v("#f-city"),
+  if(gpsRaw&&!gps){$("#f-gps").setAttribute("aria-invalid","true");errs.push(["#f-gps","Koordinaterna ska se ut som 56.1612, 15.5869. Lämna tomt om du är osäker."]);}
+  const meds=[...document.querySelectorAll("#meds .med")].map(el=>({name:el.querySelector(".m-name").value.trim(),dose:el.querySelector(".m-dose").value.trim(),qty:Math.max(1,Math.min(20,parseInt(el.querySelector(".m-qty").value)||1)),cold:el.querySelector(".m-cold").checked})).filter(m=>m.name);
+  if(!meds.length) errs.push([".m-name","Skriv minst ett läkemedel."]);
+  const staff=document.querySelector('input[name="who"]:checked').value==="personal";
+  return {errs,gps,data:{
+    kind:"medicin", requesterRole:staff?$("#r-role").value:"privat", requesterName:v("#r-name"), requesterPhone:v("#r-phone"), requesterUnit:staff?v("#r-unit"):"",
+    name:v("#f-name"), phone:v("#f-phone"), street:v("#f-street"), apartment:v("#f-apt"), postcode:v("#f-zip").replace(/\s/g,""), city:v("#f-city"),
     lat:gps?gps.lat:null, lng:gps?gps.lng:null, landing:v("#f-landing"), canReceive:$("#f-receiver").checked,
-    medicines:meds, supplies, notes:v("#f-notes")
-  }};
+    medicines:meds, runsOut:v("#f-runsout"), notes:v("#f-notes")}};
 }
 
-function fillForm(o){
-  $("#f-name").value=o.name||""; $("#f-phone").value=o.phone||""; $("#f-persons").value=o.persons||1;
-  $("#f-street").value=o.street||""; $("#f-apt").value=o.apartment||""; $("#f-zip").value=o.postcode||""; $("#f-city").value=o.city||"";
-  $("#f-gps").value=(o.lat!=null&&o.lng!=null)?`${o.lat}, ${o.lng}`:""; $("#f-landing").value=o.landing||""; $("#f-receiver").checked=!!o.canReceive;
-  $("#meds").innerHTML=""; (o.medicines?.length?o.medicines:[{}]).forEach(addMed);
-  $("#f-nomed").checked = !o.medicines?.length && !!o.supplies?.length; syncNoMed();
-  document.querySelectorAll("#supply-chips input").forEach(i=>i.checked=(o.supplies||[]).includes(i.value));
-  $("#f-notes").value=o.notes||"";
+/* row mapping */
+const toRow=(o,id)=>({id,kind:o.kind,requester_role:o.requesterRole,requester_name:o.requesterName,requester_phone:o.requesterPhone,requester_unit:o.requesterUnit,
+  name:o.name,phone:o.phone||"",persons:1,street:o.street,apartment:o.apartment,postcode:o.postcode,city:o.city,lat:o.lat,lng:o.lng,landing:o.landing,can_receive:!!o.canReceive,
+  medicines:o.medicines,supplies:[],runs_out:o.runsOut,notes:o.notes,status:o.status||"ny",eta:o.eta||null,dispatched_at:o.dispatchedAt||null,drone:o.drone||null});
+const fromRow=r=>({id:r.id,kind:r.kind||"medicin",requesterRole:r.requester_role,requesterName:r.requester_name,requesterPhone:r.requester_phone,requesterUnit:r.requester_unit,
+  name:r.name,phone:r.phone,street:r.street,apartment:r.apartment,postcode:r.postcode,city:r.city,lat:r.lat,lng:r.lng,landing:r.landing,canReceive:r.can_receive,
+  medicines:r.medicines||[],runsOut:r.runs_out,notes:r.notes,status:r.status,eta:r.eta,dispatchedAt:r.dispatched_at,drone:r.drone,createdAt:r.created_at});
+const newId=()=>crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&3|8)).toString(16)});
+
+function rememberRef(id,kind){
+  try{const l=JSON.parse(localStorage.getItem("waam-refs")||"[]");l.unshift({ref:refOf(id),kind,ts:Date.now()});localStorage.setItem("waam-refs",JSON.stringify(l.slice(0,8)));}catch(e){}
 }
 
-const refOf = id => "WAAM-"+String(id||"").replace(/[^a-z0-9]/gi,"").slice(-6).toUpperCase().padStart(6,"0");
-
-function showConfirm(o){
-  const medTxt=o.medicines?.length?o.medicines.map(m=>`${esc(m.name)}${m.dose?" "+esc(m.dose):""} ×${m.qty}${m.critical?" (livsviktig)":""}`).join(", "):"Ingen";
-  const supTxt=o.supplies?.length?o.supplies.map(k=>esc(SUPPLIES.find(s=>s.key===k)?.label||k)).join(", "):"Inga";
-  $("#confirm").innerHTML=`<div class="confirm">
-    <span class="eyebrow" style="color:var(--ok)">Beställningen är mottagen</span>
-    <h2>Vi har din beställning</h2>
-    <div><div class="hint">Ditt referensnummer – spara det eller ta en skärmbild</div><div class="ref">${refOf(o.id)}</div></div>
-    <p>Vi packar ihop din beställning med andra i samma hus. ${o.medicines?.some(m=>m.critical)?"Livsviktig medicin går först.":""} Håll telefonen nära, vi ringer om något är oklart. Behöver du ändra något, skicka en ny beställning och skriv referensnumret i meddelandet.</p>
-    <dl class="kv">
-      <dt>Adress</dt><dd>${esc(o.street)}${o.apartment?", "+esc(o.apartment):""}, ${esc(o.postcode)} ${esc(o.city)}</dd>
-      <dt>Medicin</dt><dd>${medTxt}</dd>
-      <dt>Övrigt</dt><dd>${supTxt}</dd>
-    </dl>
-    <div><button class="btn btn-ghost" id="new-order" type="button">Skicka en ny beställning</button></div>
-  </div>`;
-  $("#confirm").hidden=false; $("#order-form").hidden=true;
-  $("#new-order").onclick=()=>{ $("#confirm").hidden=true; $("#order-form").hidden=false; $("#order-form").reset(); fillForm({persons:1}); $("#f-nomed").checked=false; syncNoMed(); window.scrollTo({top:0}); };
-}
-
-/* row <-> object mapping for the Supabase table */
-const toRow = (o,id) => ({id, name:o.name, phone:o.phone, persons:o.persons, street:o.street, apartment:o.apartment, postcode:o.postcode, city:o.city,
-  lat:o.lat, lng:o.lng, landing:o.landing, can_receive:o.canReceive, medicines:o.medicines, supplies:o.supplies, notes:o.notes});
-const fromRow = r => ({id:r.id, name:r.name, phone:r.phone, persons:r.persons, street:r.street, apartment:r.apartment, postcode:r.postcode, city:r.city,
-  lat:r.lat, lng:r.lng, landing:r.landing, canReceive:r.can_receive, medicines:r.medicines||[], supplies:r.supplies||[], notes:r.notes,
-  status:r.status, createdAt:r.created_at, updatedAt:r.updated_at});
-const newId = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==="x"?r:(r&3|8)).toString(16)}));
-
-$("#order-form").addEventListener("submit", async e=>{
+$("#order-form").addEventListener("submit",async e=>{
   e.preventDefault();
-  const {errs,data}=readForm();
-  const st=$("#form-status");
-  if(errs.length){ st.style.color="var(--crit)"; st.textContent=errs[0][1]; $(errs[0][0]).focus(); return; }
-  if(!S.sb){ st.style.color="var(--crit)"; st.textContent="Tjänsten är inte uppkopplad ("+(S.notReady||"okänt fel")+"). Ladda om sidan med Ctrl+Shift+R."; return; }
-  const btn=$("#submit-btn"); btn.disabled=true; st.style.color="var(--muted)"; st.textContent="Skickar…";
+  const st=$("#form-status"), {errs,gps,data}=readForm();
+  if(errs.length){st.style.color="var(--crit)";st.textContent=errs[0][1];$(errs[0][0]).focus();return;}
+  if(!S.sb){st.style.color="var(--crit)";st.textContent="Tjänsten är inte uppkopplad ("+(S.notReady||"okänt fel")+").";return;}
+  const btn=$("#submit-btn");btn.disabled=true;st.style.color="var(--muted)";st.textContent="Skickar …";
+  if(!gps){const g=await geocode(`${data.street}, ${data.postcode} ${data.city}`); if(g){data.lat=g.lat;data.lng=g.lng;}}
   const id=newId();
   try{
-    const {error}=await S.sb.from("orders").insert(toRow(data,id));
-    if(error) throw error;
-    st.textContent=""; showConfirm({...data,id}); window.scrollTo({top:0,behavior:"smooth"});
-  }catch(err){
-    console.error(err);
-    st.style.color="var(--crit)";
-    st.textContent="Det gick inte att skicka just nu. Kontrollera uppkopplingen och försök igen.";
-  }finally{ btn.disabled=false; }
+    const {error}=await S.sb.from("orders").insert(toRow(data,id)); if(error) throw error;
+    rememberRef(id,"medicin"); st.textContent=""; showConfirm(id,data);
+  }catch(err){console.error(err);st.style.color="var(--crit)";st.textContent="Det gick inte att skicka. Kontrollera uppkopplingen och försök igen.";}
+  finally{btn.disabled=false;}
 });
 
-/* ---------- grouping logic (pure) ---------- */
-function normStreet(s){
-  return String(s||"").toLowerCase().normalize("NFC")
-    .replace(/[.,]/g," ").replace(/\b(lgh|lägenhet|vån|våning|tr|trappa|uppg|uppgång)\b.*$/,"")
-    .replace(/\s+/g," ").trim();
+function showConfirm(id,o){
+  $("#confirm").innerHTML=`<div class="confirm">
+    <span class="eyebrow" style="color:var(--ok)">Beställningen är mottagen</span>
+    <h2>Tack, vi har beställningen</h2>
+    <div><div class="hint">Referensnummer – spara det eller ta en skärmbild</div><div class="ref">${refOf(id)}</div></div>
+    <p>Apoteket kontrollerar receptet och packar lådan. ${o.runsOut==="slut"||o.runsOut==="24h"?"Beställningen är markerad som akut och går först.":""} Under <b>Följ beställning</b> ser du när drönaren är på väg och när den är framme.</p>
+    <dl class="kv"><dt>Till</dt><dd>${esc(o.name)}, ${esc(o.street)}${o.apartment?", "+esc(o.apartment):""}</dd><dt>Medicin</dt><dd>${o.medicines.map(m=>esc(m.name)+" ×"+m.qty).join(", ")}</dd></dl>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" type="button" id="go-track">Följ beställningen</button><button class="btn btn-ghost" type="button" id="new-order">Ny beställning</button></div>
+  </div>`;
+  $("#confirm").hidden=false;$("#order-form").hidden=true;window.scrollTo({top:0,behavior:"smooth"});
+  $("#go-track").onclick=()=>{show("folj");track(refOf(id));};
+  $("#new-order").onclick=()=>{$("#confirm").hidden=true;$("#order-form").hidden=false;$("#order-form").reset();$("#meds").innerHTML="";addMed();syncWho();};
 }
-const addrKey = o => normStreet(o.street)+"|"+String(o.postcode||"").replace(/\s/g,"");
-function distM(a,b){
-  const R=6371000, toR=x=>x*Math.PI/180;
-  const dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
-  const h=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.sqrt(h));
+
+/* ================= AED ================= */
+$("#aed-open").onclick=()=>{$("#aed-form").hidden=false;$("#a-street").focus();};
+$("#aed-cancel").onclick=()=>{$("#aed-form").hidden=true;};
+$("#aed-form").addEventListener("submit",async e=>{
+  e.preventDefault(); const st=$("#aed-status");
+  const street=$("#a-street").value.trim(), city=$("#a-city").value.trim()||"Karlskrona", phone=$("#a-phone").value.trim();
+  if(!street||!phone){st.style.color="var(--crit)";st.textContent="Adress och telefonnummer behövs.";return;}
+  if(!S.sb){st.style.color="var(--crit)";st.textContent="Tjänsten är inte uppkopplad. Ring 112.";return;}
+  $("#aed-send").disabled=true; st.style.color="var(--muted)"; st.textContent="Skickar drönaren …";
+  let p=parseGps($("#a-gps").value); if(!p) p=await geocode(`${street}, ${city}`);
+  const now=Date.now(), id=newId();
+  const o={kind:"aed",requesterRole:"privat",requesterName:"Larm via webben",requesterPhone:phone,requesterUnit:"",name:"Hjärtstopp",phone,street,apartment:"",postcode:"",city,
+    lat:p?p.lat:null,lng:p?p.lng:null,landing:"",canReceive:false,medicines:[{name:"Hjärtstartare (AED)",dose:"",qty:1,cold:false}],runsOut:"slut",notes:"",
+    status:"skickad",dispatchedAt:new Date(now).toISOString(),eta:etaFrom(p,now),drone:AED_DRONE};
+  try{const {error}=await S.sb.from("orders").insert(toRow(o,id)); if(error) throw error;
+    rememberRef(id,"aed"); $("#aed-form").hidden=true; st.textContent=""; show("folj"); track(refOf(id));
+  }catch(err){console.error(err);st.style.color="var(--crit)";st.textContent="Det gick inte att skicka. Ring 112.";}
+  finally{$("#aed-send").disabled=false;}
+});
+
+/* ================= tracking ================= */
+function renderMyRefs(){
+  let l=[];try{l=JSON.parse(localStorage.getItem("waam-refs")||"[]");}catch(e){}
+  $("#my-refs").innerHTML=l.length?`<span class="hint" style="width:100%">Dina senaste:</span>`+l.map(x=>`<button type="button" class="btn btn-ghost btn-sm mono" data-ref="${esc(x.ref)}">${esc(x.ref)}${x.kind==="aed"?" · AED":""}</button>`).join(""):"";
+  $("#my-refs").querySelectorAll("[data-ref]").forEach(b=>b.onclick=()=>track(b.dataset.ref));
 }
-function centroid(list){
-  const p=list.filter(o=>o.lat!=null&&o.lng!=null);
-  return p.length?{lat:p.reduce((s,o)=>s+o.lat,0)/p.length,lng:p.reduce((s,o)=>s+o.lng,0)/p.length}:null;
+$("#track-form").addEventListener("submit",e=>{e.preventDefault();track($("#t-ref").value);});
+async function track(ref){
+  ref=String(ref||"").toUpperCase().replace(/\s/g,""); const code=ref.replace(/^WAAM-?/,"");
+  $("#t-ref").value=ref; $("#t-err").textContent="";
+  if(!/^[0-9A-F]{8}$/.test(code)){$("#t-err").textContent="Referensnumret ska se ut som WAAM-1A2B3C4D.";return;}
+  if(!S.sb){$("#t-err").textContent="Tjänsten är inte uppkopplad.";return;}
+  S.trackRef=code; clearInterval(S.trackTimer);
+  const load=async()=>{
+    const {data,error}=await S.sb.rpc("get_order_status",{p_ref:code.toLowerCase()});
+    if(error){console.error(error);$("#t-err").textContent="Kunde inte hämta status just nu.";return;}
+    const r=Array.isArray(data)?data[0]:data;
+    if(!r){$("#track-out").innerHTML="";$("#t-err").textContent="Hittade ingen beställning med det numret.";clearInterval(S.trackTimer);return;}
+    renderTrack(ref,r);
+  };
+  await load(); S.trackTimer=setInterval(()=>{ if(S.view==="folj") load(); },10000);
 }
+function renderTrack(ref,r){
+  let st=r.status; const arrived=st==="skickad"&&r.eta&&new Date(r.eta)<=Date.now(); if(arrived) st="levererad";
+  const idx=STAGES.indexOf(st);
+  const aed=r.kind==="aed";
+  const head = st==="skickad" ? `<div class="hint">Beräknad ankomst</div><div class="eta" data-eta="${esc(r.eta)}">${hhmm(r.eta)}</div><div class="hint" data-until="${esc(r.eta)}">${untilTxt(r.eta)}</div>`
+    : st==="levererad" ? `<div class="eta" style="color:var(--ok)">Framme</div><div class="hint">${aed?"Hjärtstartaren har landat. Öppna lådan och följ rösten från hjärtstartaren.":"Lådan har landat vid huset."}</div>`
+    : `<div class="eta">${st==="packad"?"Packad":"Väntar"}</div><div class="hint">${st==="packad"?"Lådan är packad och väntar på en ledig drönare.":"Beställningen är mottagen och står i kö hos apoteket."}</div>`;
+  $("#track-out").innerHTML=`<div class="confirm track" ${aed?'style="box-shadow:inset 5px 0 0 var(--crit)"':""}>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span class="ref">${esc(ref)}</span>${aed?`<span class="prio p0">HJÄRTSTARTARE</span>`:""}</div>
+    ${head}
+    <ol class="steps-h">${STAGES.map((s,i)=>`<li class="${i<=idx?"done":""} ${i===idx?"now":""}"><i></i>${STAGE_LABEL[s]}</li>`).join("")}</ol>
+    <p class="hint">Uppdateras automatiskt. Beställd ${hhmm(r.created_at)}.${aed?" Har du inte ringt 112, gör det nu.":""}</p>
+  </div>`;
+}
+
+/* ================= priority & grouping ================= */
+function prioOf(o){ if(o.kind==="aed") return 0; if(o.runsOut==="slut"||o.runsOut==="24h") return 1; if(o.runsOut==="3d"||(o.medicines||[]).some(m=>m.cold)) return 2; return 3; }
+function normStreet(s){return String(s||"").toLowerCase().normalize("NFC").replace(/[.,]/g," ").replace(/\b(lgh|lägenhet|vån|våning|tr|trappa|uppg|uppgång)\b.*$/,"").replace(/\s+/g," ").trim();}
+const addrKey=o=>normStreet(o.street)+"|"+String(o.postcode||"").replace(/\s/g,"");
+function centroid(l){const p=l.filter(o=>o.lat!=null&&o.lng!=null);return p.length?{lat:p.reduce((s,o)=>s+o.lat,0)/p.length,lng:p.reduce((s,o)=>s+o.lng,0)/p.length}:null;}
 function groupOrders(orders){
+  const groups=[];
+  orders.filter(o=>o.kind==="aed").forEach(o=>groups.push({key:"aed-"+o.id,orders:[o],c:o.lat!=null?{lat:o.lat,lng:o.lng}:null,aed:true}));
+  const open=orders.filter(o=>o.kind!=="aed");
+  // only group orders in the same stage-bucket (not yet dispatched together vs already dispatched)
   const map=new Map();
-  for(const o of orders){ const k=addrKey(o); if(!map.has(k)) map.set(k,[]); map.get(k).push(o); }
-  let groups=[...map].map(([key,list])=>({key,orders:list,c:centroid(list)}));
-  // merge groups within MERGE_M metres (same building, different spelling)
-  for(let i=0;i<groups.length;i++) for(let j=groups.length-1;j>i;j--){
-    const a=groups[i], b=groups[j];
-    if(a.c&&b.c&&distM(a.c,b.c)<=MERGE_M){ a.orders.push(...b.orders); a.c=centroid(a.orders); a.merged=true; groups.splice(j,1); }
-  }
+  for(const o of open){const k=addrKey(o)+"#"+(o.dispatchedAt||"open"); if(!map.has(k)) map.set(k,[]); map.get(k).push(o);}
+  let gs=[...map].map(([key,list])=>({key,orders:list,c:centroid(list)}));
+  for(let i=0;i<gs.length;i++) for(let j=gs.length-1;j>i;j--){const a=gs[i],b=gs[j];
+    if(a.c&&b.c&&(a.key.split("#")[1]===b.key.split("#")[1])&&distM(a.c,b.c)<=MERGE_M){a.orders.push(...b.orders);a.c=centroid(a.orders);a.merged=true;gs.splice(j,1);}}
+  groups.push(...gs);
   return groups.map(g=>{
-    const meds=new Map(), sup=new Map(); let kg=0;
-    for(const o of g.orders){
-      const who=o.apartment?o.apartment:(o.name||"okänd");
-      for(const m of o.medicines||[]){
-        const k=(m.name+"|"+(m.dose||"")).toLowerCase();
-        if(!meds.has(k)) meds.set(k,{name:m.name,dose:m.dose,qty:0,critical:false,cold:false,for:[]});
-        const r=meds.get(k); r.qty+=m.qty||1; r.critical=r.critical||!!m.critical; r.cold=r.cold||!!m.cold; r.for.push(who+(m.qty>1?` (${m.qty})`:""));
-        kg+=MED_KG*(m.qty||1);
-      }
-      for(const key of o.supplies||[]){
-        const s=SUPPLIES.find(x=>x.key===key); if(!s) continue;
-        const n=s.per==="person"?(o.persons||1):1;
-        if(!sup.has(key)) sup.set(key,{...s,qty:0,for:[]});
-        const r=sup.get(key); r.qty+=n; r.for.push(who); kg+=s.kg*n;
-      }
-    }
+    const meds=new Map(); let kg=0;
+    for(const o of g.orders){const who=o.apartment||o.name||"okänd";
+      for(const m of o.medicines||[]){const k=(m.name+"|"+(m.dose||"")).toLowerCase();
+        if(!meds.has(k)) meds.set(k,{name:m.name,dose:m.dose,qty:0,cold:false,for:[]});
+        const r=meds.get(k); r.qty+=m.qty||1; r.cold=r.cold||!!m.cold; r.for.push(who+(m.qty>1?` (${m.qty})`:"")); kg+=(g.aed?2:MED_KG)*(m.qty||1);}}
     const first=g.orders.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)))[0];
-    const stageIdx=Math.min(...g.orders.map(o=>STAGES.indexOf(o.status||"ny")).map(i=>i<0?0:i));
-    return {
-      key:g.key, merged:!!g.merged, orders:g.orders, c:g.c,
-      street:first.street, postcode:first.postcode, city:first.city,
-      meds:[...meds.values()].sort((a,b)=>b.critical-a.critical||a.name.localeCompare(b.name,"sv")),
-      supplies:[...sup.values()],
-      akut:[...meds.values()].some(m=>m.critical),
-      persons:g.orders.reduce((s,o)=>s+(o.persons||1),0),
-      receiver:g.orders.find(o=>o.canReceive),
-      contentKg:kg, flights:Math.max(1,Math.ceil(kg/Math.max(0.1,BOX_MAX_KG-BOX_TARE))),
-      get kg(){ return this.contentKg + this.flights*BOX_TARE; },
-      cold:[...meds.values()].some(m=>m.cold),
-      firstAt:first.createdAt, status:STAGES[stageIdx]
-    };
-  }).sort((a,b)=>(b.akut-a.akut)||String(a.firstAt).localeCompare(String(b.firstAt)));
+    const stageIdx=Math.min(...g.orders.map(o=>Math.max(0,STAGES.indexOf(o.status||"ny"))));
+    const d=g.c?distM(BASE,g.c):null;
+    return {key:g.key,aed:!!g.aed,merged:!!g.merged,orders:g.orders,c:g.c,street:first.street,postcode:first.postcode,city:first.city,
+      meds:[...meds.values()].sort((a,b)=>b.cold-a.cold||a.name.localeCompare(b.name,"sv")),
+      prio:Math.min(...g.orders.map(prioOf)), cold:[...meds.values()].some(m=>m.cold), kg:kg+DRONE.boxTareKg,
+      receiver:g.orders.find(o=>o.canReceive), firstAt:first.createdAt, status:STAGES[stageIdx],
+      eta:first.eta, dispatchedAt:first.dispatchedAt, drone:first.drone, distKm:d!=null?d/1000:null, outOfRange:d!=null&&d/1000>DRONE.rangeKm};
+  }).sort((a,b)=>(a.status==="levererad")-(b.status==="levererad")||a.prio-b.prio||String(a.firstAt).localeCompare(String(b.firstAt)));
 }
 
-/* ---------- example data (clearly labelled, never stored) ---------- */
+/* ================= fleet ================= */
+function fleetState(orders){
+  const now=Date.now(), byDrone={};
+  for(const o of orders){ if(!o.drone||!o.dispatchedAt||!o.eta) continue;
+    const dep=new Date(o.dispatchedAt).getTime(), arr=new Date(o.eta).getTime(), back=arr+(arr-dep);
+    if(now<back && o.status!=="levererad" || (now<back && o.status==="levererad")){ (byDrone[o.drone]=byDrone[o.drone]||[]).push({o,dep,arr,back}); } }
+  return [...FLEET,AED_DRONE].map(name=>{
+    const trips=(byDrone[name]||[]).sort((a,b)=>a.dep-b.dep); const t=trips[0];
+    if(!t) return {name,state:"ledig",pos:{lat:BASE.lat,lng:BASE.lng}};
+    const dest=t.o.lat!=null?{lat:t.o.lat,lng:t.o.lng}:null;
+    if(!dest) return {name,state:"på väg",pos:{lat:BASE.lat,lng:BASE.lng},trip:t};
+    const lerp=(a,b,f)=>({lat:a.lat+(b.lat-a.lat)*f,lng:a.lng+(b.lng-a.lng)*f});
+    if(now<t.arr) return {name,state:"på väg",pos:lerp(BASE,dest,Math.max(0,(now-t.dep)/(t.arr-t.dep))),trip:t};
+    return {name,state:"återvänder",pos:lerp(dest,BASE,Math.min(1,(now-t.arr)/(t.back-t.arr))),trip:t};
+  });
+}
+
+/* ================= demo data ================= */
 function demoOrders(){
-  const t=h=>new Date(Date.now()-h*3600e3).toISOString();
-  return [
-    {id:"ex1",name:"Exempel Andersson",phone:"070-000 00 01",persons:2,street:"Ronnebygatan 12",apartment:"Lgh 1102",postcode:"37133",city:"Karlskrona",lat:56.16236,lng:15.58601,landing:"Innergården",canReceive:true,medicines:[{name:"Insulin NovoRapid",dose:"100 E/ml",qty:2,critical:true,cold:true}],supplies:["vatten","mat"],notes:"",createdAt:t(5)},
-    {id:"ex2",name:"Exempel Berg",phone:"070-000 00 02",persons:1,street:"Ronnebygatan 12",apartment:"Lgh 1203",postcode:"371 33",city:"Karlskrona",lat:56.16240,lng:15.58610,canReceive:false,medicines:[{name:"Waran",dose:"2,5 mg",qty:1,critical:true}],supplies:["filt"],notes:"Ingen hiss, svårt med trappor",createdAt:t(4.2)},
-    {id:"ex3",name:"Exempel Chen",phone:"070-000 00 03",persons:4,street:"Ronnebyg. 12",apartment:"Lgh 1001",postcode:"37133",city:"Karlskrona",lat:56.16233,lng:15.58596,canReceive:false,medicines:[{name:"Ventoline",dose:"0,1 mg/dos",qty:1,critical:false}],supplies:["vatten","barn","mat"],notes:"Bebis 8 månader",createdAt:t(3.1)},
-    {id:"ex4",name:"Exempel Dahl",phone:"070-000 00 04",persons:2,street:"Borgmästaregatan 5",apartment:"",postcode:"37134",city:"Karlskrona",lat:56.16105,lng:15.58938,canReceive:true,medicines:[{name:"Levaxin",dose:"100 mikrog",qty:1,critical:false}],supplies:["hygien","ljus","radio"],notes:"",createdAt:t(2.5)},
-    {id:"ex5",name:"Exempel Eriksson",phone:"070-000 00 05",persons:1,street:"Borgmästaregatan 5",apartment:"Vån 3",postcode:"37134",city:"Karlskrona",lat:56.16108,lng:15.58944,canReceive:false,medicines:[],supplies:["mat","forsta","filt"],notes:"Katt i lägenheten",createdAt:t(1.8)},
-    {id:"ex6",name:"Exempel Fors",phone:"070-000 00 06",persons:3,street:"Vallgatan 22",apartment:"Lgh 1302",postcode:"37131",city:"Karlskrona",lat:null,lng:null,canReceive:false,medicines:[{name:"Alvedon",dose:"500 mg",qty:2,critical:false}],supplies:["vatten"],notes:"",createdAt:t(0.6)},
-  ].map(o=>({...o,status:S.demoStatus[o.id]||"ny"}));
+  const t=h=>new Date(Date.now()-h*3600e3).toISOString(), now=Date.now();
+  const base=[
+    {id:"ex-aed1",kind:"aed",requesterRole:"privat",requesterName:"Larm via webben",requesterPhone:"070-000 00 09",name:"Hjärtstopp",phone:"070-000 00 09",street:"Hantverkaregatan 20",postcode:"37135",city:"Karlskrona",lat:56.1645,lng:15.5845,medicines:[{name:"Hjärtstartare (AED)",qty:1}],runsOut:"slut",createdAt:new Date(now-60e3).toISOString(),status:"skickad",drone:AED_DRONE,dispatchedAt:new Date(now-60e3).toISOString()},
+    {id:"ex1",kind:"medicin",requesterRole:"ssk",requesterName:"Exempel Sjuksköterska",requesterPhone:"070-000 00 11",requesterUnit:"Hemtjänst Trossö",name:"Exempel Andersson",phone:"0455-00 00 01",street:"Ronnebygatan 12",apartment:"Lgh 1102",postcode:"37133",city:"Karlskrona",lat:56.16236,lng:15.58601,landing:"Innergården",canReceive:true,medicines:[{name:"Insulin NovoRapid",dose:"100 E/ml",qty:2,cold:true}],runsOut:"24h",notes:"Hissen står still",createdAt:t(3)},
+    {id:"ex2",kind:"medicin",requesterRole:"privat",requesterName:"Exempel Berg (dotter)",requesterPhone:"070-000 00 12",name:"Exempel Berg",street:"Ronnebygatan 12",apartment:"Lgh 1203",postcode:"37133",city:"Karlskrona",lat:56.1624,lng:15.5861,medicines:[{name:"Waran",dose:"2,5 mg",qty:1}],runsOut:"slut",notes:"Bor på femte våningen",createdAt:t(2.5)},
+    {id:"ex3",kind:"medicin",requesterRole:"planerare",requesterName:"Exempel Planerare",requesterPhone:"070-000 00 13",requesterUnit:"Hemtjänst Lyckeby",name:"Exempel Chen",street:"Lyckebyvägen 8",apartment:"",postcode:"37162",city:"Lyckeby",lat:56.1992,lng:15.6489,medicines:[{name:"Levaxin",dose:"100 mikrog",qty:1},{name:"Metformin",dose:"500 mg",qty:1}],runsOut:"3d",createdAt:t(2)},
+    {id:"ex4",kind:"medicin",requesterRole:"hemtjanst",requesterName:"Exempel Vårdbiträde",requesterPhone:"070-000 00 14",requesterUnit:"Hemtjänst Nättraby",name:"Exempel Dahl",street:"Nättrabyvägen 40",postcode:"37172",city:"Nättraby",lat:56.2050,lng:15.5250,medicines:[{name:"Alvedon",dose:"500 mg",qty:2}],runsOut:"senare",createdAt:t(1.5)},
+    {id:"ex5",kind:"medicin",requesterRole:"ssk",requesterName:"Exempel Sjuksköterska",requesterPhone:"070-000 00 11",requesterUnit:"Hemtjänst Trossö",name:"Exempel Eriksson",street:"Borgmästaregatan 5",apartment:"Vån 3",postcode:"37134",city:"Karlskrona",lat:56.16105,lng:15.58938,medicines:[{name:"Furix",dose:"40 mg",qty:1}],runsOut:"24h",createdAt:t(1),status:"skickad",drone:"Drönare 1",dispatchedAt:new Date(now-90e3).toISOString()},
+    {id:"ex6",kind:"medicin",requesterRole:"privat",requesterName:"Exempel Fors",requesterPhone:"070-000 00 16",name:"Exempel Fors",street:"Jämjövägen 3",postcode:"37360",city:"Jämjö",lat:56.1920,lng:15.8400,medicines:[{name:"Ventoline",dose:"0,1 mg/dos",qty:1}],runsOut:"3d",createdAt:t(0.5)},
+  ];
+  return base.map(o=>{const s=S.demoState[o.id]||{}; const r={...o,...s}; r.status=r.status||"ny"; if(r.dispatchedAt&&!r.eta) r.eta=etaFrom(r.lat!=null?r:null,new Date(r.dispatchedAt).getTime()); return r;});
 }
 
-/* ---------- logistics view ---------- */
-const fmtKg = n => n.toFixed(1).replace(".",",")+" kg";
-const ago = iso => { if(!iso) return ""; const m=Math.round((Date.now()-new Date(iso))/60000); return m<60?`${m} min sedan`:`${Math.floor(m/60)} h ${m%60} min sedan`; };
-
+/* ================= logistics view ================= */
+function destroyMap(){ if(S.map){S.map.remove();S.map=null;S.layers=null;} }
 function renderLogistik(){
   const root=$("#logistik-root");
-  if(!S.isOwner){
-    const signedInNotAdmin = S.session && !S.isOwner;
-    root.innerHTML=`<div class="locked">
-      <span class="eyebrow">Låst vy</span>
-      <h1 style="font-size:32px">Logistiken är bara för WAAM</h1>
-      <p class="hint" style="font-size:15px">Här samlar teamet alla beställningar och packar drönarlådor per hus. Logga in med ditt WAAM-konto.</p>
-      ${signedInNotAdmin?`<p class="err">Kontot ${esc(S.session.user.email)} har inte behörighet till logistiken.</p><div><button type="button" class="btn btn-ghost btn-sm" id="logout">Logga ut</button></div>`:`
+  if(!S.isOwner && !S.demoOnly){
+    destroyMap();
+    const signedInNotAdmin=S.session&&!S.isOwner;
+    root.innerHTML=`<div class="locked"><span class="eyebrow">Låst vy</span><h1 style="font-size:32px">Logistiken är bara för WAAM</h1>
+      <p class="hint" style="font-size:15px">Karta över drönare och kunder, prioriterad kö och alla beställningar. Logga in med ditt WAAM-konto.</p>
+      ${signedInNotAdmin?`<p class="err">Kontot ${esc(S.session.user.email)} har inte behörighet.</p><div><button type="button" class="btn btn-ghost btn-sm" id="logout">Logga ut</button></div>`:`
       <form id="login" class="panel" style="max-width:380px" novalidate>
         <div class="field"><label class="lbl" for="l-email">E-post</label><input type="text" id="l-email" autocomplete="username" inputmode="email"></div>
         <div class="field"><label class="lbl" for="l-pass">Lösenord</label><input type="password" id="l-pass" autocomplete="current-password"></div>
-        <button class="btn btn-primary" type="submit" id="l-btn">Logga in</button>
-        <span class="err" id="l-err" role="alert"></span>
-      </form>`}
-      <div><button type="button" class="btn btn-ghost btn-sm" id="demo-locked">Visa exempeldata utan att logga in</button></div>
-    </div>`;
-    const lf=$("#login");
-    if(lf) lf.onsubmit=async e=>{
-      e.preventDefault(); const err=$("#l-err"); err.textContent="";
-      if(!S.sb){ err.textContent="Tjänsten är inte uppkopplad ("+(S.notReady||"okänt fel")+"). Ladda om med Ctrl+Shift+R."; return; }
-      $("#l-btn").disabled=true;
-      const {error}=await S.sb.auth.signInWithPassword({email:$("#l-email").value.trim(), password:$("#l-pass").value});
-      $("#l-btn").disabled=false;
-      if(error) err.textContent="Fel e-post eller lösenord.";
-    };
+        <button class="btn btn-primary" type="submit" id="l-btn">Logga in</button><span class="err" id="l-err" role="alert"></span></form>`}
+      <div><button type="button" class="btn btn-ghost btn-sm" id="demo-locked">Visa exempeldata utan att logga in</button></div></div>`;
+    const lf=$("#login"); if(lf) lf.onsubmit=async e=>{e.preventDefault();const err=$("#l-err");err.textContent="";
+      if(!S.sb){err.textContent="Tjänsten är inte uppkopplad.";return;} $("#l-btn").disabled=true;
+      const {error}=await S.sb.auth.signInWithPassword({email:$("#l-email").value.trim(),password:$("#l-pass").value});
+      $("#l-btn").disabled=false; if(error) err.textContent="Fel e-post eller lösenord.";};
     const lo=$("#logout"); if(lo) lo.onclick=()=>S.sb.auth.signOut();
     $("#demo-locked").onclick=()=>{S.demoOnly=true;S.demo=true;renderLogistik();};
-    if(!S.demoOnly) return;
+    return;
   }
-  const src = S.demo ? demoOrders() : S.orders;
-  const groups = groupOrders(src);
-  const shown = groups.filter(g=> S.filter==="akut"?g.akut : S.filter==="ej"?(g.status==="ny"||g.status==="packad") : true);
-  const stats={orders:src.length, boxes:groups.reduce((s,g)=>s+g.flights,0), akut:groups.filter(g=>g.akut).length, persons:groups.reduce((s,g)=>s+g.persons,0)};
-  root.innerHTML=`
-    <div class="lhead">
-      <div><span class="eyebrow">Låst vy · endast WAAM</span><h1 style="margin-top:8px">Packlistor per fastighet</h1></div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${S.demo?`<span class="demo-flag">Exempeldata visas</span>`:""}${S.isOwner?`<button type="button" class="btn btn-ghost btn-sm" id="logout2">Logga ut</button>`:""}</div>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="v">${stats.orders}</div><div class="k">beställningar</div></div>
-      <div class="stat"><div class="v">${groups.length}</div><div class="k">adresser · ${stats.boxes} flygningar</div></div>
-      <div class="stat crit"><div class="v">${stats.akut}</div><div class="k">hus med livsviktig medicin</div></div>
-      <div class="stat"><div class="v">${stats.persons}</div><div class="k">personer att försörja</div></div>
-    </div>
-    <div class="toolbar">
-      <div class="seg" role="group" aria-label="Filter">
-        ${[["alla","Alla"],["akut","Akuta"],["ej","Ej skickade"]].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join("")}
+  if(!$("#map")){
+    root.innerHTML=`
+      <div class="lhead"><div><span class="eyebrow">Låst vy · endast WAAM</span><h1 style="margin-top:8px">Logistik och drönare</h1></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="demo-flag"></span>${S.isOwner?`<button type="button" class="btn btn-ghost btn-sm" id="logout2">Logga ut</button>`:""}</div></div>
+      <div class="stats" id="stats"></div>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="Filter" id="filters"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="demo-toggle"></button>
+        <div class="wind"><label for="wind-in">Vind nu (m/s)</label><input type="number" id="wind-in" min="0" max="60" step="1" placeholder="–" value="${S.wind??""}"><span id="wind-badge"></span></div>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" id="demo-toggle">${S.demoOnly?"Tillbaka till inloggning":S.demo?"Visa riktiga beställningar":"Visa exempeldata"}</button>
-      <div class="wind">
-        <label for="wind-in">Vind nu (m/s)</label>
-        <input type="number" id="wind-in" min="0" max="60" step="1" inputmode="numeric" placeholder="–" value="${S.wind??""}">
-        ${S.wind==null||isNaN(S.wind)?`<span class="badge">Ange vind</span>`:flightStop()?`<span class="badge akut">Flygstopp</span>`:`<span class="badge levererad">Flygväder OK</span>`}
-      </div>
-    </div>
-    ${flightStop()?`<div class="flightstop" role="status"><b>Flygstopp – vinden är ${S.wind} m/s</b><span>Drönaren klarar högst ${DRONE.maxWindMs} m/s. Packa lådorna nu, så kan de skickas så fort vinden mojnar. Akuta hus står överst och går först.</span></div>`:""}
-    <div class="groups">
-      ${shown.length? shown.map(groupCard).join("") : emptyState(src.length)}
-    </div>`;
-  root.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;renderLogistik();});
-  $("#wind-in").onchange=e=>{ const v=e.target.value.trim(); S.wind=v===""?null:parseFloat(v.replace(",",".")); try{localStorage.setItem("waam-wind",v)}catch(_){ } renderLogistik(); };
-  $("#demo-toggle").onclick=()=>{ if(S.demoOnly){S.demoOnly=false;S.demo=false;} else S.demo=!S.demo; renderLogistik(); };
-  const lo2=$("#logout2"); if(lo2) lo2.onclick=()=>S.sb.auth.signOut();
-  const de=$("#demo-empty"); if(de) de.onclick=()=>{S.demo=true;renderLogistik();};
-  root.querySelectorAll("[data-advance]").forEach(b=>b.onclick=()=>advance(b.dataset.advance, groups));
-  root.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>copyList(groups.find(g=>g.key===b.dataset.copy), b));
-  root.querySelectorAll(".pack input").forEach(i=>i.onchange=()=>{S.packed[i.id]=i.checked;});
-}
-
-function emptyState(total){
-  if(total) return `<div class="empty"><h2>Inga hus matchar filtret</h2><p class="hint">Välj <b>Alla</b> för att se samtliga adresser.</p></div>`;
-  return `<div class="empty"><h2>Inga beställningar än</h2><p class="hint" style="font-size:15px;max-width:60ch">När någon skickar formuläret under <b>Beställ</b> dyker hushållet upp här, ihopslaget med grannarna i samma hus. Testa själv genom att skicka en beställning, eller titta på exempeldata.</p><button type="button" class="btn btn-ghost btn-sm" id="demo-empty">Visa exempeldata</button></div>`;
+      <div id="flightstop"></div>
+      <div class="map-wrap"><div><div id="map" role="region" aria-label="Karta över drönare och kunder"></div>
+        <div class="legend" style="margin-top:8px"><span><i class="dot" style="background:${PRIO_COLOR[0]}"></i>Hjärtstopp</span><span><i class="dot" style="background:${PRIO_COLOR[1]}"></i>Akut</span><span><i class="dot" style="background:${PRIO_COLOR[2]}"></i>Hög</span><span><i class="dot" style="background:${PRIO_COLOR[3]}"></i>Normal</span><span><i class="dot" style="background:#1D7348"></i>Levererad</span><span>Streckad cirkel = räckvidd ${DRONE.rangeKm} km</span></div></div>
+        <div class="fleet" id="fleet"></div></div>
+      <div class="groups" id="queue"></div>`;
+    const lo2=$("#logout2"); if(lo2) lo2.onclick=()=>S.sb.auth.signOut();
+    $("#wind-in").onchange=e=>{const v=e.target.value.trim();S.wind=v===""?null:parseFloat(v.replace(",","."));try{localStorage.setItem("waam-wind",v)}catch(_){ } renderLogistik();};
+    initMap();
+  }
+  const src=S.demo?demoOrders():S.orders;
+  const groups=groupOrders(src);
+  const fleet=fleetState(src);
+  const open=groups.filter(g=>g.status!=="levererad");
+  const shown=groups.filter(g=>S.filter==="akut"?g.prio<=1&&g.status!=="levererad":S.filter==="kö"?(g.status==="ny"||g.status==="packad"):S.filter==="väg"?g.status==="skickad":S.filter==="klar"?g.status==="levererad":true);
+  $("#demo-flag").innerHTML=S.demo?`<span class="demo-flag">Exempeldata visas</span>`:"";
+  $("#demo-toggle").textContent=S.demoOnly?"Tillbaka till inloggning":S.demo?"Visa riktiga beställningar":"Visa exempeldata";
+  $("#demo-toggle").onclick=()=>{ if(S.demoOnly){S.demoOnly=false;S.demo=false;destroyMap();} else {S.demo=!S.demo;} renderLogistik(); };
+  $("#stats").innerHTML=`
+    <div class="stat crit"><div class="v">${open.filter(g=>g.prio<=1).length}</div><div class="k">akuta (P0–P1)</div></div>
+    <div class="stat"><div class="v">${open.filter(g=>g.status==="ny"||g.status==="packad").length}</div><div class="k">i kö</div></div>
+    <div class="stat"><div class="v">${open.filter(g=>g.status==="skickad").length}</div><div class="k">på väg</div></div>
+    <div class="stat"><div class="v">${fleet.filter(f=>f.state==="ledig"&&f.name!==AED_DRONE).length}/${FLEET.length}</div><div class="k">lediga drönare</div></div>`;
+  $("#filters").innerHTML=[["alla","Alla"],["akut","Akuta"],["kö","I kö"],["väg","På väg"],["klar","Levererade"]].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join("");
+  $("#filters").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;renderLogistik();});
+  $("#wind-badge").innerHTML=S.wind==null||isNaN(S.wind)?`<span class="badge">Ange vind</span>`:flightStop()?`<span class="badge akut">Flygstopp</span>`:`<span class="badge levererad">Flygväder OK</span>`;
+  $("#flightstop").innerHTML=flightStop()?`<div class="flightstop" role="status" style="margin-bottom:12px"><b>Flygstopp – vinden är ${S.wind} m/s</b><span>Drönarna klarar högst ${DRONE.maxWindMs} m/s. Packa lådorna, de skickas så fort vinden mojnar. Akuta står överst.</span></div>`:"";
+  $("#queue").innerHTML=shown.length?shown.map(groupCard).join(""):`<div class="empty"><h2>${src.length?"Inget matchar filtret":"Inga beställningar än"}</h2><p class="hint">${src.length?"Välj Alla för att se allt.":"När någon beställer dyker det upp här och på kartan."}</p></div>`;
+  $("#queue").querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.key,groups,fleet));
+  renderFleet(fleet); renderMapLayers(groups,fleet);
 }
 
 function groupCard(g){
-  const gid=g.key.replace(/[^a-z0-9]/gi,"_");
-  const perBox=g.kg/g.flights, over=g.flights>1, pct=Math.min(100,perBox/BOX_MAX_KG*100);
-  const medRows=g.meds.map((m,i)=>`<li><label><input type="checkbox" id="pk-${gid}-m${i}" ${S.packed[`pk-${gid}-m${i}`]?"checked":""}><span class="q">${m.qty}×</span><span>${esc(m.name)} ${esc(m.dose||"")}${m.critical?`<span class="lv">LIVSVIKTIG</span>`:""}${m.cold?`<span class="kv">KYLVARA</span>`:""}<span class="for">till ${esc(m.for.join(", "))}</span></span></label></li>`).join("");
-  const supRows=g.supplies.map((s,i)=>`<li><label><input type="checkbox" id="pk-${gid}-s${i}" ${S.packed[`pk-${gid}-s${i}`]?"checked":""}><span class="q">${s.qty}×</span><span>${esc(s.pack)}<span class="for">till ${esc(s.for.join(", "))}</span></span></label></li>`).join("");
-  const recips=g.orders.slice().sort((a,b)=>String(a.apartment).localeCompare(String(b.apartment),"sv",{numeric:true})).map(o=>`
-    <li><span class="who">${esc(o.name)}${o.apartment?` · ${esc(o.apartment)}`:""}</span>
-      <span class="meta mono">${esc(o.phone)} · ${o.persons||1} pers · ${ago(o.createdAt)}</span>
-      ${o.canReceive?`<span class="receiver">Kan ta emot lådan för huset</span>`:""}
-      ${o.landing?`<span class="meta">Landning: ${esc(o.landing)}</span>`:""}
-      ${o.notes?`<span class="note">"${esc(o.notes)}"</span>`:""}</li>`).join("");
-  const next=NEXT_ACTION[g.status];
-  return `<article class="group ${g.akut?"akut":""}">
-    <div class="g-head">
-      <div style="min-width:0">
-        <h2>${esc(g.street)}</h2>
-        <div class="sub">${esc(String(g.postcode).replace(/^(\d{3})(\d{2})$/,"$1 $2"))} ${esc(g.city)}${g.c?` · <span class="mono">${g.c.lat.toFixed(4)}, ${g.c.lng.toFixed(4)}</span>`:" · ingen GPS"}${g.merged?" · ihopslagen via GPS":""}</div>
-      </div>
-      <div class="badges">${g.akut?`<span class="badge akut">Akut</span>`:""}${g.cold?`<span class="badge kyl">Kylvara · isolerad låda</span>`:""}<span class="badge ${g.status}">${STAGE_LABEL[g.status]}</span></div>
-    </div>
-    <div class="g-body">
-      <div class="g-col">
-        <h3>Packlista · ${g.flights>1?g.flights+" lådor":"en låda"}</h3>
-        <ul class="pack">
-          ${g.meds.length?`<li class="sep">Medicin</li>${medRows}`:""}
-          ${g.supplies.length?`<li class="sep">Förnödenheter</li>${supRows}`:""}
-        </ul>
-      </div>
-      <div class="g-col">
-        <h3>Mottagare · ${g.orders.length} hushåll</h3>
-        <ul class="recips">${recips}</ul>
-      </div>
-    </div>
-    <div class="g-foot">
-      <div class="weightbar"><span class="wb ${over?"over":""}"><i style="width:${pct}%"></i></span><span><b class="mono" style="color:var(--ink)">${fmtKg(g.kg)}</b>${over?` totalt · ${g.flights} flygningar à max ${BOX_MAX_KG} kg`:` av ${BOX_MAX_KG} kg`} <span class="hint">(varav låda ${fmtKg(BOX_TARE*g.flights)})</span></span></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="btn btn-ghost btn-sm" data-copy="${esc(g.key)}">Kopiera packlista</button>
-        ${!next?`<span class="badge levererad">Klar</span>` : (g.status==="packad"&&flightStop())?`<button type="button" class="btn btn-primary btn-sm" disabled title="Vinden är för stark för drönaren">Flygstopp – väntar</button>` : `<button type="button" class="btn btn-primary btn-sm" data-advance="${esc(g.key)}">${next}</button>`}
-      </div>
-    </div>
+  const recips=g.orders.map(o=>`<li><span class="who">${esc(o.name)}${o.apartment?` · ${esc(o.apartment)}`:""}</span>
+    ${o.phone?`<span class="meta mono">${esc(o.phone)}</span>`:""}
+    <span class="meta">${g.aed?"Larm":"Beställt av"}: ${esc(o.requesterName)} (${esc(ROLE[o.requesterRole]||"")}${o.requesterUnit?", "+esc(o.requesterUnit):""}) · <span class="mono">${esc(o.requesterPhone)}</span></span>
+    ${o.runsOut&&!g.aed?`<span class="meta"><b>${esc(RUNS[o.runsOut]||"")}</b> · ${ago(o.createdAt)}</span>`:`<span class="meta">${ago(o.createdAt)}</span>`}
+    ${o.canReceive?`<span class="receiver">Kan ta emot lådan för huset</span>`:""}${o.landing?`<span class="meta">Landning: ${esc(o.landing)}</span>`:""}${o.notes?`<span class="note">"${esc(o.notes)}"</span>`:""}</li>`).join("");
+  const meds=g.meds.map(m=>`<li><label><input type="checkbox"><span class="q">${m.qty}×</span><span>${esc(m.name)} ${esc(m.dose||"")}${m.cold?`<span class="kv">KYLVARA</span>`:""}<span class="for">till ${esc(m.for.join(", "))}</span></span></label></li>`).join("");
+  let action="";
+  if(g.status==="ny") action=`<button class="btn btn-ghost btn-sm" data-act="packad" data-key="${esc(g.key)}">Markera packad</button>`;
+  if(g.status==="packad") action=flightStop()?`<button class="btn btn-primary btn-sm" disabled>Flygstopp – väntar</button>`:g.outOfRange?`<button class="btn btn-primary btn-sm" disabled title="Utanför räckvidd">Utanför räckvidd</button>`:`<button class="btn btn-primary btn-sm" data-act="skicka" data-key="${esc(g.key)}">Skicka drönare</button>`;
+  if(g.status==="skickad") action=`<span class="meta"><b>${esc(g.drone||"")}</b> · ankomst <b data-eta="${esc(g.eta)}">${g.eta?hhmm(g.eta):"–"}</b> <span data-until="${esc(g.eta)}">${g.eta?untilTxt(g.eta):""}</span></span><button class="btn btn-ghost btn-sm" data-act="levererad" data-key="${esc(g.key)}">Markera levererad</button>`;
+  if(g.status==="levererad") action=`<span class="badge levererad">Levererad</span>`;
+  return `<article class="group ${g.aed?"aedcard":""}">
+    <div class="g-head"><div style="min-width:0"><h2>${esc(g.street)}</h2>
+      <div class="sub">${esc(String(g.postcode||"").replace(/^(\d{3})(\d{2})$/,"$1 $2"))} ${esc(g.city)} · ${g.distKm!=null?`<span class="mono">${g.distKm.toFixed(1).replace(".",",")} km från basen</span>`:"position saknas"}${g.merged?" · ihopslagen via GPS":""}</div></div>
+      <div class="badges"><span class="prio p${g.prio}">${PRIO_LABEL[g.prio]}</span>${g.cold?`<span class="badge kyl">Kylvara · isolerad låda</span>`:""}${g.outOfRange?`<span class="badge zone">Utanför räckvidd</span>`:""}<span class="badge ${g.status}">${STAGE_LABEL[g.status]}</span></div></div>
+    <div class="g-body"><div class="g-col"><h3>${g.aed?"Last":"Packlista · en låda"}</h3><ul class="pack">${meds}</ul></div>
+      <div class="g-col"><h3>${g.aed?"Larm":"Mottagare · "+g.orders.length+" st"}</h3><ul class="recips">${recips}</ul></div></div>
+    <div class="g-foot"><div class="weightbar"><span class="wb ${g.kg>DRONE.maxPayloadKg?"over":""}"><i style="width:${Math.min(100,g.kg/DRONE.maxPayloadKg*100)}%"></i></span><span><b class="mono" style="color:var(--ink)">${fmtKg(g.kg)}</b> av ${String(DRONE.maxPayloadKg).replace(".",",")} kg</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${action}</div></div>
   </article>`;
 }
 
-async function advance(key, groups){
+async function act(kind,key,groups,fleet){
   const g=groups.find(x=>x.key===key); if(!g) return;
-  const to=STAGES[Math.min(STAGES.length-1, STAGES.indexOf(g.status)+1)];
-  if(S.demo){ g.orders.forEach(o=>S.demoStatus[o.id]=to); renderLogistik(); toast(`${g.street}: ${STAGE_LABEL[to].toLowerCase()}`); return; }
-  try{
-    const {error}=await S.sb.from("orders").update({status:to, updated_at:new Date().toISOString()}).in("id", g.orders.map(o=>o.id));
-    if(error) throw error;
-    await loadOrders();
-    toast(`${g.street}: ${STAGE_LABEL[to].toLowerCase()}`);
-  }catch(e){ toast("Kunde inte uppdatera status. Försök igen."); }
+  let patch;
+  if(kind==="packad") patch={status:"packad"};
+  if(kind==="levererad") patch={status:"levererad"};
+  if(kind==="skicka"){
+    const free=fleet.find(f=>f.state==="ledig"&&f.name!==AED_DRONE);
+    if(!free){toast("Alla drönare är upptagna. Försök igen när en har landat.");return;}
+    const now=Date.now(); patch={status:"skickad",drone:free.name,dispatchedAt:new Date(now).toISOString(),eta:etaFrom(g.c,now)};
+  }
+  if(S.demo){ g.orders.forEach(o=>S.demoState[o.id]=Object.assign(S.demoState[o.id]||{},patch)); renderLogistik(); toast(`${g.street}: ${STAGE_LABEL[patch.status].toLowerCase()}`); return; }
+  const row={status:patch.status,updated_at:new Date().toISOString()};
+  if(patch.drone){row.drone=patch.drone;row.dispatched_at=patch.dispatchedAt;row.eta=patch.eta;}
+  const {error}=await S.sb.from("orders").update(row).in("id",g.orders.map(o=>o.id));
+  if(error){console.error(error);toast("Kunde inte uppdatera. Har databasen uppdaterats med setup-v2.sql?");return;}
+  await loadOrders(); toast(`${g.street}: ${STAGE_LABEL[patch.status].toLowerCase()}`);
 }
 
-async function copyList(g, btn){
-  if(!g) return;
-  const lines=[`WAAM drönarlåda – ${g.street}, ${g.postcode} ${g.city}${g.akut?" [AKUT]":""}`,"",
-    ...g.meds.map(m=>`${m.qty}× ${m.name} ${m.dose||""}${m.critical?" (LIVSVIKTIG)":""}${m.cold?" (KYLVARA)":""} → ${m.for.join(", ")}`),
-    ...g.supplies.map(s=>`${s.qty}× ${s.pack} → ${s.for.join(", ")}`),"",
-    `Vikt: ${fmtKg(g.kg)}${g.receiver?` · Mottagare: ${g.receiver.name}${g.receiver.apartment?" ("+g.receiver.apartment+")":""}, ${g.receiver.phone}`:""}`];
-  const text=lines.join("\n");
-  try{ await navigator.clipboard.writeText(text); btn.textContent="Kopierad"; setTimeout(()=>btn.textContent="Kopiera packlista",1500); }
-  catch(e){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");btn.textContent="Kopierad";}catch(_){} ta.remove(); }
+function renderFleet(fleet){
+  $("#fleet").innerHTML=`<div class="panel" style="padding:12px"><b>${esc(BASE.name)}</b><span class="hint">Räckvidd ${DRONE.rangeKm} km · ${Math.round(DRONE.speedMs*3.6)} km/h · max ${String(DRONE.maxPayloadKg).replace(".",",")} kg</span></div>`+
+    fleet.map(f=>`<div class="drone"><b>${esc(f.name)}</b><span class="badge ${f.state==="ledig"?"levererad":f.state==="på väg"?"skickad":"packad"}" style="justify-self:start">${f.state}</span>${f.trip?`<span class="hint">${esc(f.trip.o.street)} · ${f.state==="på väg"?"framme "+hhmm(f.trip.arr):"tillbaka "+hhmm(f.trip.back)}</span>`:""}</div>`).join("");
 }
 
-/* ---------- boot ---------- */
-supplyChips(); addMed();
-try{ const v=localStorage.getItem("waam-view"); if(v==="system") show("system"); }catch(e){}
+/* ================= map ================= */
+function initMap(){
+  if(!window.L){ $("#map").innerHTML=`<p class="hint" style="padding:16px">Kartan kunde inte laddas.</p>`; return; }
+  S.map=L.map("map",{scrollWheelZoom:false}).setView([BASE.lat,BASE.lng],12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(S.map);
+  const zone=L.circle([BASE.lat,BASE.lng],{radius:DRONE.rangeKm*1000,color:"#D9480F",weight:2,dashArray:"6 6",fillOpacity:.04}).addTo(S.map);
+  S.zoneBounds=zone.getBounds();
+  L.marker([BASE.lat,BASE.lng],{icon:L.divIcon({className:"",html:`<div style="background:#13202B;color:#fff;font:700 11px/1 sans-serif;padding:6px 7px;border-radius:6px;white-space:nowrap">BAS</div>`,iconAnchor:[18,12]})}).addTo(S.map).bindPopup(esc(BASE.name));
+  S.layers={orders:L.layerGroup().addTo(S.map),drones:L.layerGroup().addTo(S.map),routes:L.layerGroup().addTo(S.map)};
+  setTimeout(()=>{ if(S.map){ S.map.invalidateSize(); S.map.fitBounds(S.zoneBounds,{padding:[10,10]}); } },120);
+}
+function renderMapLayers(groups,fleet){
+  if(!S.map||!S.layers) return;
+  S.layers.orders.clearLayers();
+  for(const g of groups){ if(!g.c) continue;
+    const col=g.status==="levererad"?"#1D7348":PRIO_COLOR[g.prio];
+    L.circleMarker([g.c.lat,g.c.lng],{radius:g.aed?11:8,color:"#fff",weight:2,fillColor:col,fillOpacity:1}).addTo(S.layers.orders)
+      .bindPopup(`<b>${esc(g.street)}</b><br>${PRIO_LABEL[g.prio]} · ${STAGE_LABEL[g.status]}<br>${g.orders.map(o=>esc(o.name)).join(", ")}`);
+  }
+  updateDrones(fleet);
+}
+function updateDrones(fleet){
+  if(!S.map||!S.layers) return;
+  S.layers.drones.clearLayers(); S.layers.routes.clearLayers();
+  for(const f of fleet){ if(f.state==="ledig") continue;
+    const dest=f.trip&&f.trip.o.lat!=null?[f.trip.o.lat,f.trip.o.lng]:null;
+    if(dest) L.polyline([[BASE.lat,BASE.lng],dest],{color:f.name===AED_DRONE?"#B4232B":"#13202B",weight:2,dashArray:"4 6",opacity:.7}).addTo(S.layers.routes);
+    L.marker([f.pos.lat,f.pos.lng],{icon:L.divIcon({className:"",html:`<div style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:16px;border-radius:50%;background:${f.name===AED_DRONE?"#B4232B":"#D9480F"};border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.3)"></span><span style="background:#fff;color:#13202B;font:600 11px/1 sans-serif;padding:3px 5px;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.3);white-space:nowrap">${esc(f.name)}</span></div>`,iconAnchor:[8,8]})}).addTo(S.layers.drones);
+  }
+}
+setInterval(()=>{
+  document.querySelectorAll("[data-until]").forEach(el=>{const v=el.dataset.until; if(v) el.textContent=untilTxt(v);});
+  if(S.view==="logistik"&&S.map){ const src=S.demo?demoOrders():S.orders; const fleet=fleetState(src); updateDrones(fleet); renderFleet(fleet); }
+},1000);
 
+/* ================= system page ================= */
+$("#assume-table tbody").innerHTML=[
+  ["Bas",BASE.name],["Antal drönare",`${FLEET.length} + 1 för hjärtstartare`],["Räckvidd",`${DRONE.rangeKm} km`],["Fart",`${Math.round(DRONE.speedMs*3.6)} km/h`],
+  ["Maxlast inkl. låda",`${String(DRONE.maxPayloadKg).replace(".",",")} kg`],["Lådans vikt",`${String(DRONE.boxTareKg).replace(".",",")} kg`],["Vindgräns",`${DRONE.maxWindMs} m/s`]
+].map(([k,v])=>`<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join("");
+
+/* ================= boot ================= */
+addMed(); syncWho();
 async function loadOrders(){
   const {data,error}=await S.sb.from("orders").select("*").order("created_at",{ascending:true}).limit(1000);
-  if(!error){ S.orders=data.map(fromRow); if(S.view==="logistik") renderLogistik(); }
+  if(!error){S.orders=data.map(fromRow); if(S.view==="logistik") renderLogistik();}
 }
 async function onSession(session){
   S.session=session; S.isOwner=false;
-  if(S.channel){ S.sb.removeChannel(S.channel); S.channel=null; }
-  if(session){
-    const {data}=await S.sb.rpc("is_admin");
-    S.isOwner=data===true;
-    if(S.isOwner){
-      S.demoOnly=false; S.demo=false;
-      await loadOrders();
-      S.channel=S.sb.channel("orders-live").on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>loadOrders()).subscribe();
-    }
-  } else { S.orders=[]; }
-  $("#lockmark").hidden=S.isOwner;
-  if(S.view==="logistik") renderLogistik();
+  if(S.channel){S.sb.removeChannel(S.channel);S.channel=null;}
+  if(session){const {data}=await S.sb.rpc("is_admin"); S.isOwner=data===true;
+    if(S.isOwner){S.demoOnly=false;S.demo=false;await loadOrders();
+      S.channel=S.sb.channel("orders-live").on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>loadOrders()).subscribe();}}
+  else S.orders=[];
+  $("#lockmark").hidden=S.isOwner; destroyMap(); if(S.view==="logistik") renderLogistik();
 }
 (function init(){
-  const cfg=window.WAAM_CONFIG||{};
-  const why = !window.supabase ? "databasbiblioteket laddades inte"
-    : (!cfg.supabaseUrl || !cfg.supabaseAnonKey || cfg.supabaseUrl.includes("DIN-")) ? "config.js saknar Supabase-uppgifter" : "";
-  if(why){
-    S.notReady=why;
-    console.error("WAAM: "+why);
-    $("#form-status").style.color="var(--muted)";
-    $("#form-status").textContent="Demoläge: "+why+".";
-    return;
-  }
-  S.sb=window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-  S.sb.auth.getSession().then(({data})=>onSession(data.session));
-  S.sb.auth.onAuthStateChange((evt,session)=>{ if(evt!=="INITIAL_SESSION") setTimeout(()=>onSession(session),0); });
+  const why=!window.supabase?"databasbiblioteket laddades inte":(!CFG.supabaseUrl||!CFG.supabaseAnonKey||CFG.supabaseUrl.includes("DIN-"))?"config.js saknar Supabase-uppgifter":"";
+  if(why){S.notReady=why;console.error("WAAM: "+why);$("#form-status").style.color="var(--muted)";$("#form-status").textContent="Demoläge: "+why+".";}
+  else{S.sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey);
+    S.sb.auth.getSession().then(({data})=>onSession(data.session));
+    S.sb.auth.onAuthStateChange((evt,session)=>{if(evt!=="INITIAL_SESSION") setTimeout(()=>onSession(session),0);});}
+  let v="bestall"; try{v=localStorage.getItem("waam-view")||"bestall";}catch(e){}
+  if(location.hash.startsWith("#t-")){v="folj";}
+  show(["bestall","folj","logistik","system"].includes(v)?v:"bestall");
+  if(location.hash.startsWith("#t-")) setTimeout(()=>track(location.hash.slice(3)),300);
 })();
 </script>
 </body>
