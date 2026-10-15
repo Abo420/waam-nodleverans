@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="WAAM – drönarleverans av medicin till äldre i Karlskrona under krisens första 72 timmar.">
 <title>WAAM Nödleverans</title>
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/favicon.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,6 +44,8 @@ button,input,textarea,select{font:inherit;color:inherit}
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ink);color:var(--bg)}
 .bar .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:22px;letter-spacing:.04em}
+.brand-logo{display:block;height:52px;width:auto;border-radius:8px;background:#1E222E}
+@media (max-width:520px){.brand-logo{height:44px}}
 .brand small{font:600 11px/1 var(--f-mono);letter-spacing:.08em;opacity:.7;text-transform:uppercase}
 .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 .tab{background:none;border:0;border-radius:6px;padding:7px 12px;color:inherit;opacity:.75;cursor:pointer;font-weight:600;font-size:14px}
@@ -51,6 +55,8 @@ button,input,textarea,select{font:inherit;color:inherit}
 
 /* hero */
 .hero{padding-block:36px 8px;display:grid;gap:18px}
+.hero-logo{display:block;width:100%;max-width:300px;height:auto;border-radius:16px;background:#1E222E;order:-1}
+@media (min-width:900px){.hero{grid-template-columns:minmax(0,1fr) 380px;column-gap:40px;align-items:center}.hero>*{grid-column:1}.hero .hero-logo{grid-column:2;grid-row:1/span 4;max-width:none;order:0}}
 .eyebrow{font:600 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
 .hero h1{font-size:clamp(32px,5.4vw,56px);font-weight:800;max-width:16ch}
 .hero p.lead{font-size:17px;max-width:62ch;color:var(--muted)}
@@ -255,7 +261,7 @@ select{width:100%;border:1.5px solid var(--line);background:var(--sunk);border-r
 
 <header class="bar">
   <div class="wrap">
-    <div class="brand">WAAM <small>Nödleverans · 72 h</small></div>
+    <div class="brand"><picture><source srcset="img/waam-logo.webp" type="image/webp"><img class="brand-logo" src="img/waam-logo.png" width="480" height="355" alt="WAAM"></picture> <small>Nödleverans · 72 h</small></div>
     <nav class="tabs" role="tablist" aria-label="Vyer">
       <button class="tab" role="tab" id="tab-bestall" aria-selected="true" data-view="bestall">Beställ</button>
       <button class="tab" role="tab" id="tab-folj" aria-selected="false" data-view="folj">Följ beställning</button>
@@ -269,6 +275,7 @@ select{width:100%;border:1.5px solid var(--line);background:var(--sunk);border-r
 <main id="view-bestall">
   <div class="wrap">
     <section class="hero">
+      <picture class="hero-logo-wrap" style="display:contents"><source srcset="img/waam-logo.webp" type="image/webp"><img class="hero-logo" src="img/waam-logo.png" width="480" height="355" alt="WAAM – drönare som bär en låda"></picture>
       <span class="eyebrow">De första 72 timmarna</span>
       <h1>Medicin med drönare när du inte kan ta dig ut</h1>
       <p class="lead">För äldre i Karlskrona som inte kan hämta sin medicin när stormen slagit ut strömmen och hissarna. Du som anhörig, eller du som arbetar i hemtjänsten, beställer här. Apoteket kontrollerar receptet och drönaren flyger lådan till huset.</p>
